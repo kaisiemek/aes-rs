@@ -25,6 +25,6 @@ fn main() {
     key.expand_key();
     println!("{}", key);
 
-    let round_key = key.get_key(10);
+    let round_key = &key[10];
     println!("{}", round_key);
 }

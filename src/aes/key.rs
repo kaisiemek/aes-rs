@@ -1,15 +1,14 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::Index};
 
 use super::constants::{
-    ENCRYPTION_ROUNDS_AES128, KEY_ROUND_CONSTANTS, KEY_SIZE_AES128, KEY_SIZE_EXPANDED_AES128,
-    ROUND_KEY_SIZE, S_BOXES,
+    ENCRYPTION_ROUNDS_AES128, KEY_ROUND_CONSTANTS, KEY_SIZE_AES128, ROUND_KEY_SIZE, S_BOXES,
 };
 
 pub struct Key128 {
-    data: [u8; KEY_SIZE_AES128],
-    expanded_data: [u32; KEY_SIZE_EXPANDED_AES128],
+    round_keys: Vec<RoundKey>,
 }
 
+#[derive(Debug, Default)]
 pub struct RoundKey {
     data: [u8; ROUND_KEY_SIZE],
 }
@@ -17,76 +16,84 @@ pub struct RoundKey {
 impl Key128 {
     pub fn new(data: [u8; KEY_SIZE_AES128]) -> Self {
         Self {
-            data,
-            expanded_data: [0; KEY_SIZE_EXPANDED_AES128],
+            // the first round key is just the initial key unprocessed
+            round_keys: vec![data.into()],
         }
     }
 
     pub fn expand_key(&mut self) {
-        self.copy_initial_keydata();
-
         for round in 1..=ENCRYPTION_ROUNDS_AES128 {
             self.generate_round_key(round);
         }
     }
 
-    pub fn get_key(&self, round: usize) -> RoundKey {
-        let words: [u32; 4] = self
-            .expanded_data
-            .iter()
-            .cloned()
-            .skip(round * 4)
-            .take(4)
-            .collect::<Vec<u32>>()
-            .try_into()
-            .unwrap();
-
-        words.into()
+    pub fn get_round_key(&self, round: usize) -> Option<&RoundKey> {
+        self.round_keys.get(round)
     }
 
     fn generate_round_key(&mut self, round: usize) {
-        let first_word = round * 4;
-        self.expanded_data[first_word] = self.expanded_data[first_word - 4]
-            ^ process_word(self.expanded_data[first_word - 1], round);
+        let last_key = self.round_keys.last().expect(
+            "round keys were unexpectedly empty, generate_round_key must only be called after the initial key has been added to the vector."
+        );
 
-        for cur_word in first_word + 1..first_word + 4 {
-            self.expanded_data[cur_word] =
-                self.expanded_data[cur_word - 1] ^ self.expanded_data[cur_word - 4];
+        let mut key_data: [u32; 4] = [0; 4];
+        key_data[0] = last_key.get_word(0) ^ last_key.get_rot_sub_rcon_word(3, round);
+
+        for word_index in 1..=3 {
+            key_data[word_index] = key_data[word_index - 1] ^ last_key.get_word(word_index);
         }
+
+        self.round_keys.push(key_data.into());
     }
-
-    fn copy_initial_keydata(&mut self) {
-        for i in (0..self.data.len()).step_by(4) {
-            self.expanded_data[i / 4] = u32::from_be_bytes(self.data[i..i + 4].try_into().unwrap());
-        }
-    }
-}
-
-// function from the AES key expansion spec, see
-// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
-// section 5.2 Key Expansion
-fn process_word(word: u32, round: usize) -> u32 {
-    let mut bytes = word.to_be_bytes().to_vec();
-
-    // Rcon[i]
-    let rcon = KEY_ROUND_CONSTANTS[round - 1];
-    // RotWord()
-    bytes.rotate_left(1);
-    // SubWord()
-    bytes.iter_mut().for_each(|b| {
-        *b = S_BOXES[*b as usize];
-    });
-    bytes[0] ^= rcon;
-
-    u32::from_be_bytes(bytes.try_into().unwrap())
 }
 
 impl Display for Key128 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for round in 0..ENCRYPTION_ROUNDS_AES128 + 1 {
-            writeln!(f, "{}", self.get_key(round))?;
+        for key in self.round_keys.iter() {
+            writeln!(f, "{}", key)?;
         }
+
         Ok(())
+    }
+}
+
+impl Index<usize> for Key128 {
+    type Output = RoundKey;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.get_round_key(index).unwrap()
+    }
+}
+
+impl From<[u8; KEY_SIZE_AES128]> for Key128 {
+    fn from(value: [u8; KEY_SIZE_AES128]) -> Self {
+        Self::new(value)
+    }
+}
+
+impl RoundKey {
+    fn get_word(&self, word_index: usize) -> u32 {
+        let data_index = word_index * 4;
+        u32::from_be_bytes(self.data[data_index..data_index + 4].try_into().unwrap())
+    }
+
+    // function from the AES key expansion spec, see
+    // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
+    // section 5.2 Key Expansion
+    fn get_rot_sub_rcon_word(&self, word_index: usize, round: usize) -> u32 {
+        let mut word = self.get_word(word_index).to_be_bytes().to_vec();
+
+        // Rcon[i]
+        let rcon = KEY_ROUND_CONSTANTS[round - 1];
+        // RotWord()
+        word.rotate_left(1);
+        // SubWord()
+        word.iter_mut().for_each(|b| {
+            *b = S_BOXES[*b as usize];
+        });
+        word[0] ^= rcon;
+
+        u32::from_be_bytes(word.try_into().unwrap())
     }
 }
 
@@ -121,5 +128,11 @@ impl From<[u32; 4]> for RoundKey {
             .unwrap();
 
         Self { data }
+    }
+}
+
+impl From<[u8; 16]> for RoundKey {
+    fn from(value: [u8; 16]) -> Self {
+        Self { data: value }
     }
 }

@@ -164,7 +164,7 @@ mod test {
             key.expand_key();
 
             for i in 0..11 {
-                let round_key = key.get_key(i);
+                let round_key = &key[i];
                 assert_eq!(round_key.to_string(), test_case.expected_round_keys[i]);
             }
         }
