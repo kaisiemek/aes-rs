@@ -1,7 +1,10 @@
 use std::{fmt::Display, ops::Index};
 
-use super::constants::{
-    ENCRYPTION_ROUNDS_AES128, KEY_ROUND_CONSTANTS, KEY_SIZE_AES128, ROUND_KEY_SIZE, S_BOXES,
+use super::{
+    constants::{
+        ENCRYPTION_ROUNDS_AES128, KEY_ROUND_CONSTANTS, KEY_SIZE_AES128, ROUND_KEY_SIZE, S_BOXES,
+    },
+    helpers::fmt_16_byte_array,
 };
 
 pub struct Key128 {
@@ -29,6 +32,10 @@ impl Key128 {
 
     pub fn get_round_key(&self, round: usize) -> Option<&RoundKey> {
         self.round_keys.get(round)
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, RoundKey> {
+        self.round_keys.iter()
     }
 
     fn generate_round_key(&mut self, round: usize) {
@@ -72,6 +79,10 @@ impl From<[u8; KEY_SIZE_AES128]> for Key128 {
 }
 
 impl RoundKey {
+    pub fn get_data(&self) -> &[u8; ROUND_KEY_SIZE] {
+        &self.data
+    }
+
     fn get_word(&self, word_index: usize) -> u32 {
         let data_index = word_index * 4;
         u32::from_be_bytes(self.data[data_index..data_index + 4].try_into().unwrap())
@@ -99,21 +110,7 @@ impl RoundKey {
 
 impl Display for RoundKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let word_to_str = |word: &[u8]| -> String {
-            word.iter()
-                .map(|byte| format!("{:02x}", byte))
-                .collect::<Vec<String>>()
-                .join("")
-        };
-
-        let key_str = self
-            .data
-            .chunks(4)
-            .map(word_to_str)
-            .collect::<Vec<String>>()
-            .join(" ");
-
-        write!(f, "{}", key_str)
+        fmt_16_byte_array(&self.data, f)
     }
 }
 
