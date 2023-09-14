@@ -122,6 +122,11 @@ impl fmt::Display for AESBlock {
     }
 }
 
+// Transform the input data format into a col vector matrix
+// 00 01 02 03       00 04 08 12
+// 04 05 06 07  -->  01 05 09 13
+// 08 09 10 11       02 06 10 14
+// 12 13 14 15       03 07 11 15
 fn swap_rows_and_cols(data: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
     let mut swapped = [0; BLOCK_SIZE];
     for col in 0..COL_SIZE {

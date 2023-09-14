@@ -1,6 +1,6 @@
 mod aes;
 
-use crate::aes::block::AESBlock;
+use crate::aes::{block::AESBlock, key::Key128};
 
 fn main() {
     let data = [
@@ -20,4 +20,11 @@ fn main() {
 
     block.mix_columns();
     println!("{}", block);
+
+    let mut key = Key128::new(data);
+    key.expand_key();
+    println!("{}", key);
+
+    let round_key = key.get_key(10);
+    println!("{}", round_key);
 }
