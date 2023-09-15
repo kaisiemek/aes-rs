@@ -6,6 +6,7 @@ use super::{
 };
 use std::{fmt::Display, ops::Index};
 
+#[derive(Default)]
 pub struct Key128 {
     round_keys: Vec<RoundKey>,
 }
@@ -33,8 +34,8 @@ impl Key128 {
         self.round_keys.get(round)
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, RoundKey> {
-        self.round_keys.iter()
+    pub fn iter(self) -> std::vec::IntoIter<RoundKey> {
+        self.round_keys.into_iter()
     }
 
     fn generate_round_key(&mut self, round: usize) {

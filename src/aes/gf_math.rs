@@ -17,7 +17,14 @@ pub fn mult(a: u8, b: u8) -> u8 {
         11 => GF256_MULT_11_LOOKUP_TABLE[a as usize],
         13 => GF256_MULT_13_LOOKUP_TABLE[a as usize],
         14 => GF256_MULT_14_LOOKUP_TABLE[a as usize],
-        _ => gf256_mult(a, b),
+        _ => {
+            log::warn!(
+                "had to perform a manual gf258 multiplication: {} * {}",
+                a,
+                b
+            );
+            gf256_mult(a, b)
+        }
     }
 }
 

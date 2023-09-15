@@ -1,58 +1,44 @@
 use super::{
-    constants::{BLOCK_SIZE, COL_SIZE, MIX_COL_MATRIX, ROW_SIZE, S_BOXES},
+    constants::{
+        BLOCK_SIZE, COL_SIZE, ENCRYPTION_ROUNDS_AES128, MIX_COL_MATRIX, ROW_SIZE, S_BOXES,
+    },
     gf_math,
     helpers::{fmt_16_byte_array, swap_rows_and_cols},
     key::{Key128, RoundKey},
 };
 use core::fmt;
-use std::collections::VecDeque;
+use std::fmt::Display;
 
 pub struct AESBlock {
     data: [u8; BLOCK_SIZE],
+    round_keys: Vec<RoundKey>,
+}
+
+pub enum AESOperation {
+    SubBytes,
+    ShiftRows,
+    MixColumns,
+    AddRoundKey(usize),
+    InverseMixColumn,
+    InverseShiftRows,
 }
 
 impl AESBlock {
-    pub fn new(from: &[u8; BLOCK_SIZE]) -> Self {
+    pub fn new(from: &[u8; BLOCK_SIZE], key: Key128) -> AESBlock {
         // AES Blocks operate on matrices from column vectors
         Self {
             data: swap_rows_and_cols(from),
+            round_keys: key.iter().collect(),
         }
     }
 
-    pub fn encrypt(&mut self, key: &Key128) {
-        let mut round_keys: VecDeque<&RoundKey> = key.iter().collect();
-        let first_key = round_keys.pop_front().unwrap();
-        let last_key = round_keys.pop_back().unwrap();
-
-        log::debug!("===== ROUND {} =====", 0);
-        log::debug!("input:   \t{}", self);
-        self.add_key(first_key);
-        log::debug!("key:     \t{}", first_key);
-        log::debug!("addkey:  \t{}", self);
-
-        for (i, round_key) in round_keys.iter().enumerate() {
-            log::debug!("===== ROUND {} =====", i + 1);
-            log::debug!("input:   \t{}", self);
-            self.substitute();
-            log::debug!("sub:     \t{}", self);
-            self.shift_rows();
-            log::debug!("shiftrow:\t{}", self);
-            self.mix_columns();
-            log::debug!("mixcol:  \t{}", self);
-            self.add_key(round_key);
-            log::debug!("key:     \t{}", round_key);
-            log::debug!("addkey:  \t{}", self);
+    pub fn encrypt(&mut self) {
+        let encryption_sched = AESOperation::encryption_scheme();
+        for operation in encryption_sched.iter() {
+            self.run(operation)
         }
 
-        log::debug!("===== ROUND {} =====", 10);
-        log::debug!("input:   \t{}", self);
-        self.substitute();
-        log::debug!("sub:     \t{}", self);
-        self.shift_rows();
-        log::debug!("shiftrow:\t{}", self);
-        self.add_key(last_key);
-        log::debug!("key:     \t{}", last_key);
-        log::debug!("addkey:  \t{}", self);
+        log::info!("ciphertext:\t{}", self);
     }
 
     pub fn get_data(&self) -> [u8; BLOCK_SIZE] {
@@ -67,7 +53,29 @@ impl AESBlock {
         }
     }
 
-    fn substitute(&mut self) {
+    fn run(&mut self, operation: &AESOperation) {
+        match operation {
+            AESOperation::SubBytes => self.sub_bytes(),
+            AESOperation::ShiftRows => self.shift_rows(),
+            AESOperation::MixColumns => self.mix_columns(),
+            AESOperation::AddRoundKey(round) => {
+                let key = &self.round_keys[*round];
+                log::debug!("{} {}", operation, key);
+                self.add_key(*round);
+                log::debug!("addkey:      \t {}", self);
+                if *round < ENCRYPTION_ROUNDS_AES128 {
+                    log::debug!("======= ROUND {:02} =======", round + 1);
+                }
+                return;
+            }
+            AESOperation::InverseMixColumn => todo!(),
+            AESOperation::InverseShiftRows => todo!(),
+        }
+
+        log::debug!("{} {}", operation, self);
+    }
+
+    fn sub_bytes(&mut self) {
         for byte in self.data.iter_mut() {
             *byte = S_BOXES[*byte as usize];
         }
@@ -95,8 +103,8 @@ impl AESBlock {
     }
 
     // TODO: optimise, do not copy the key data, do index arithmetic instead
-    fn add_key(&mut self, key: &RoundKey) {
-        let key_column_mat_data = swap_rows_and_cols(key.get_data());
+    fn add_key(&mut self, round: usize) {
+        let key_column_mat_data = swap_rows_and_cols(self.round_keys[round].get_data());
 
         for (block_byte, key_byte) in self.data.iter_mut().zip(key_column_mat_data.iter()) {
             *block_byte ^= key_byte;
@@ -154,11 +162,64 @@ impl fmt::Display for AESBlock {
     }
 }
 
+impl AESOperation {
+    pub fn invert(&self) -> Self {
+        match self {
+            AESOperation::SubBytes => AESOperation::SubBytes,
+            AESOperation::ShiftRows => AESOperation::InverseShiftRows,
+            AESOperation::MixColumns => AESOperation::InverseMixColumn,
+            AESOperation::AddRoundKey(round) => AESOperation::AddRoundKey(*round),
+            AESOperation::InverseMixColumn => AESOperation::MixColumns,
+            AESOperation::InverseShiftRows => AESOperation::ShiftRows,
+        }
+    }
+
+    pub fn encryption_scheme() -> Vec<Self> {
+        let mut operations = vec![];
+
+        // before first round: add initial key
+        operations.push(AESOperation::AddRoundKey(0));
+
+        // rounds 1 to n-1
+        for round in 1..ENCRYPTION_ROUNDS_AES128 {
+            operations.push(AESOperation::SubBytes);
+            operations.push(AESOperation::ShiftRows);
+            operations.push(AESOperation::MixColumns);
+            operations.push(AESOperation::AddRoundKey(round));
+        }
+
+        // last round, no mix columns
+        operations.push(AESOperation::SubBytes);
+        operations.push(AESOperation::ShiftRows);
+        operations.push(AESOperation::AddRoundKey(ENCRYPTION_ROUNDS_AES128));
+
+        operations
+    }
+
+    pub fn decryption_scheme() -> Vec<Self> {
+        let operations = Self::encryption_scheme();
+        operations.iter().rev().map(|op| op.invert()).collect()
+    }
+}
+
+impl Display for AESOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AESOperation::SubBytes => write!(f, "subbytes:    \t"),
+            AESOperation::ShiftRows => write!(f, "shiftrows:   \t"),
+            AESOperation::MixColumns => write!(f, "mixcols:     \t"),
+            AESOperation::AddRoundKey(round) => write!(f, "key {:02}:      \t", round),
+            AESOperation::InverseMixColumn => write!(f, "invmixcols:  \t"),
+            AESOperation::InverseShiftRows => write!(f, "invshiftrows:\t"),
+        }
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::aes::block::AESBlock;
     use crate::aes::constants::BLOCK_SIZE;
-    use crate::aes::key::RoundKey;
+    use crate::aes::key::Key128;
 
     #[test]
     fn test_shift_row() {
@@ -199,7 +260,7 @@ mod tests {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&test_case.input_data);
+            let mut block = AESBlock::new(&test_case.input_data, Default::default());
             block.shift_rows();
             assert_eq!(block.to_string(), test_case.expected_output);
         }
@@ -244,7 +305,7 @@ mod tests {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&test_case.input_data);
+            let mut block = AESBlock::new(&test_case.input_data, Default::default());
             block.mix_columns();
             assert_eq!(block.to_string(), test_case.expected_output);
         }
@@ -257,7 +318,7 @@ mod tests {
             0x14, 0x15,
         ];
         struct TestCase {
-            input_key: RoundKey,
+            input_key: Key128,
             expected_output: String,
         }
 
@@ -285,8 +346,8 @@ mod tests {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&block_data);
-            block.add_key(&test_case.input_key);
+            let mut block = AESBlock::new(&block_data, test_case.input_key);
+            block.add_key(0);
             assert_eq!(block.to_string(), test_case.expected_output);
         }
     }

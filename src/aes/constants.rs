@@ -8,6 +8,7 @@ pub const ROUND_KEY_SIZE: usize = 16;
 pub const ENCRYPTION_ROUNDS_AES128: usize = 10;
 // 128-bit keys -> 16 byte data
 pub const KEY_SIZE_AES128: usize = 16;
+pub const KEY_ROUND_CONSTANTS: [u8; ENCRYPTION_ROUNDS_AES128] = calc_round_constants();
 
 pub const S_BOXES: [u8; 256] = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -35,11 +36,8 @@ pub const MIX_COL_MATRIX: [[u8; 4]; 4] = [
     [0x03, 0x01, 0x01, 0x02],
 ];
 
-pub const KEY_ROUND_CONSTANTS: [u8; ENCRYPTION_ROUNDS_AES128] = calc_round_constants();
-
 // GF(2^8) ARITHMETIC CONSTANTS
 pub const AES_IRREDUCIBLE_POLY: u8 = 0x1b;
-
 // Calculate lookup tables for the values 2, 3, 9, 11, 13 and 15
 // These are the values used in the MixColumn and InverseMixColumn matrices
 pub const GF256_MULT_02_LOOKUP_TABLE: [u8; 256] = calc_lookup_table(2);
