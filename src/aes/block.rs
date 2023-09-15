@@ -26,28 +26,20 @@ pub enum AESOperation {
 }
 
 impl AESBlock {
-    pub fn new(from: &[u8; BLOCK_SIZE], key: Key128) -> AESBlock {
+    pub fn new(key: Key128) -> AESBlock {
         // AES Blocks operate on matrices from column vectors
         Self {
-            data: swap_rows_and_cols(from),
+            data: Default::default(),
             round_keys: key.iter().collect(),
         }
     }
 
-    pub fn encrypt(&mut self) {
-        let encryption_sched = AESOperation::encryption_scheme();
-        for operation in encryption_sched.iter() {
-            self.run(operation)
-        }
-        log::info!("ciphertext:\t{}", self);
+    pub fn set_data(&mut self, data: [u8; BLOCK_SIZE]) {
+        self.data = swap_rows_and_cols(&data);
     }
 
-    pub fn decrypt(&mut self) {
-        let decryption_sched = AESOperation::decryption_scheme();
-        for operation in decryption_sched.iter() {
-            self.run(operation)
-        }
-        log::info!("plaintext: \t{}", self);
+    pub fn execute(&mut self, schedule: &[AESOperation]) {
+        schedule.iter().for_each(|op| self.run(op));
     }
 
     #[allow(dead_code)]
@@ -239,7 +231,7 @@ impl Display for AESOperation {
 
 #[cfg(test)]
 mod test {
-    use crate::aes::block::AESBlock;
+    use crate::aes::block::{AESBlock, AESOperation};
     use crate::aes::constants::BLOCK_SIZE;
     use crate::aes::key::Key128;
 
@@ -287,11 +279,12 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut key = Key128::new(key_data);
-            key.expand_key();
+            let key = Key128::new(key_data);
+            let mut block = AESBlock::new(key);
+            block.set_data(test_case.input_data);
 
-            let mut block = AESBlock::new(&test_case.input_data, key);
-            block.encrypt();
+            let enc_schedule = AESOperation::encryption_scheme();
+            block.execute(&enc_schedule);
 
             assert_eq!(block.to_string(), test_case.expected_output);
         }
@@ -341,15 +334,17 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut key = Key128::new(key_data);
-            key.expand_key();
+            let key = Key128::new(key_data);
 
-            let mut block = AESBlock::new(&test_case.input_data, key);
+            let mut block = AESBlock::new(key);
+            block.set_data(test_case.input_data);
 
-            block.encrypt();
+            let enc_schedule = AESOperation::encryption_scheme();
+            let dec_schedule = AESOperation::decryption_scheme();
+            block.execute(&enc_schedule);
             assert_ne!(block.to_string(), test_case.expected_output);
 
-            block.decrypt();
+            block.execute(&dec_schedule);
             assert_eq!(block.to_string(), test_case.expected_output);
         }
     }
@@ -393,7 +388,9 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&test_case.input_data, Default::default());
+            let mut block = AESBlock::new(Default::default());
+            block.set_data(test_case.input_data);
+
             block.shift_rows(false);
             assert_eq!(block.to_string(), test_case.expected_output);
         }
@@ -427,7 +424,9 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&test_case.input_data, Default::default());
+            let mut block = AESBlock::new(Default::default());
+            block.set_data(test_case.input_data);
+
             block.shift_rows(false);
             assert_ne!(block.get_data(), test_case.input_data);
             block.shift_rows(true);
@@ -474,7 +473,9 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&test_case.input_data, Default::default());
+            let mut block = AESBlock::new(Default::default());
+            block.set_data(test_case.input_data);
+
             block.mix_columns(false);
             assert_eq!(block.to_string(), test_case.expected_output);
         }
@@ -508,7 +509,9 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&test_case.input_data, Default::default());
+            let mut block = AESBlock::new(Default::default());
+            block.set_data(test_case.input_data);
+
             block.mix_columns(false);
             assert_ne!(block.get_data(), test_case.input_data);
             block.mix_columns(true);
@@ -518,7 +521,7 @@ mod test {
 
     #[test]
     fn test_key_addition() {
-        let block_data = [
+        let block_data: [u8; 16] = [
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13,
             0x14, 0x15,
         ];
@@ -551,7 +554,9 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let mut block = AESBlock::new(&block_data, test_case.input_key);
+            let mut block = AESBlock::new(test_case.input_key);
+            block.set_data(block_data);
+
             block.add_key(0);
             assert_eq!(block.to_string(), test_case.expected_output);
         }

@@ -18,16 +18,13 @@ pub struct RoundKey {
 
 impl Key128 {
     pub fn new(data: [u8; KEY_SIZE_AES128]) -> Self {
-        Self {
+        let mut key = Self {
             // the first round key is just the initial key unprocessed
             round_keys: vec![data.into()],
-        }
-    }
+        };
 
-    pub fn expand_key(&mut self) {
-        for round in 1..=ENCRYPTION_ROUNDS_AES128 {
-            self.generate_round_key(round);
-        }
+        key.expand_key();
+        key
     }
 
     pub fn get_round_key(&self, round: usize) -> Option<&RoundKey> {
@@ -36,6 +33,12 @@ impl Key128 {
 
     pub fn iter(self) -> std::vec::IntoIter<RoundKey> {
         self.round_keys.into_iter()
+    }
+
+    fn expand_key(&mut self) {
+        for round in 1..=ENCRYPTION_ROUNDS_AES128 {
+            self.generate_round_key(round);
+        }
     }
 
     fn generate_round_key(&mut self, round: usize) {

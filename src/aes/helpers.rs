@@ -2,6 +2,10 @@ use super::constants::{BLOCK_SIZE, COL_SIZE, ROW_SIZE};
 use std::fmt;
 
 pub fn fmt_16_byte_array(data: &[u8; 16], f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", stringify_16_byte_array(data))
+}
+
+pub fn stringify_16_byte_array(data: &[u8; 16]) -> String {
     let word_to_str = |word: &[u8]| -> String {
         word.iter()
             .map(|byte| format!("{:02x}", byte))
@@ -9,13 +13,13 @@ pub fn fmt_16_byte_array(data: &[u8; 16], f: &mut fmt::Formatter<'_>) -> fmt::Re
             .join("")
     };
 
-    let key_str = data
+    let block_str = data
         .chunks(4)
         .map(word_to_str)
         .collect::<Vec<String>>()
         .join(" ");
 
-    write!(f, "{}", key_str)
+    block_str
 }
 
 // Transform the input data format into a col vector matrix
