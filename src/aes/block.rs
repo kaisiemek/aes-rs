@@ -244,6 +244,117 @@ mod test {
     use crate::aes::key::Key128;
 
     #[test]
+    fn test_encryption() {
+        let key_data = [
+            0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF,
+            0x4F, 0x3C,
+        ];
+
+        struct TestCase {
+            input_data: [u8; BLOCK_SIZE],
+            expected_output: String,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                input_data: [
+                    0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96, 0xE9, 0x3D, 0x7E, 0x11, 0x73,
+                    0x93, 0x17, 0x2A,
+                ],
+                expected_output: "3ad77bb4 0d7a3660 a89ecaf3 2466ef97".to_string(),
+            },
+            TestCase {
+                input_data: [
+                    0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45,
+                    0xaf, 0x8e, 0x51,
+                ],
+                expected_output: "f5d3d585 03b9699d e785895a 96fdbaaf".to_string(),
+            },
+            TestCase {
+                input_data: [
+                    0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a,
+                    0x0a, 0x52, 0xef,
+                ],
+                expected_output: "43b1cd7f 598ece23 881b00e3 ed030688".to_string(),
+            },
+            TestCase {
+                input_data: [
+                    0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6,
+                    0x6c, 0x37, 0x10,
+                ],
+                expected_output: "7b0c785e 27e8ad3f 82232071 04725dd4".to_string(),
+            },
+        ];
+
+        for test_case in test_cases {
+            let mut key = Key128::new(key_data);
+            key.expand_key();
+
+            let mut block = AESBlock::new(&test_case.input_data, key);
+            block.encrypt();
+
+            assert_eq!(block.to_string(), test_case.expected_output);
+        }
+    }
+
+    #[test]
+    fn test_decryption() {
+        let key_data = [
+            0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF,
+            0x4F, 0x3C,
+        ];
+
+        struct TestCase {
+            input_data: [u8; BLOCK_SIZE],
+            expected_output: String,
+        }
+
+        let test_cases = vec![
+            TestCase {
+                input_data: [
+                    0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96, 0xE9, 0x3D, 0x7E, 0x11, 0x73,
+                    0x93, 0x17, 0x2A,
+                ],
+                expected_output: "6bc1bee2 2e409f96 e93d7e11 7393172a".to_string(),
+            },
+            TestCase {
+                input_data: [
+                    0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45,
+                    0xaf, 0x8e, 0x51,
+                ],
+                expected_output: "ae2d8a57 1e03ac9c 9eb76fac 45af8e51".to_string(),
+            },
+            TestCase {
+                input_data: [
+                    0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a,
+                    0x0a, 0x52, 0xef,
+                ],
+                expected_output: "30c81c46 a35ce411 e5fbc119 1a0a52ef".to_string(),
+            },
+            TestCase {
+                input_data: [
+                    0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6,
+                    0x6c, 0x37, 0x10,
+                ],
+                expected_output: "f69f2445 df4f9b17 ad2b417b e66c3710".to_string(),
+            },
+        ];
+
+        for test_case in test_cases {
+            let mut key = Key128::new(key_data);
+            key.expand_key();
+
+            let mut block = AESBlock::new(&test_case.input_data, key);
+
+            block.encrypt();
+            assert_ne!(block.to_string(), test_case.expected_output);
+
+            block.decrypt();
+            assert_eq!(block.to_string(), test_case.expected_output);
+        }
+    }
+
+    #[test]
     fn test_shift_row() {
         struct TestCase {
             input_data: [u8; BLOCK_SIZE],
