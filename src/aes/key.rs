@@ -118,8 +118,7 @@ impl From<[u32; 4]> for RoundKey {
     fn from(value: [u32; 4]) -> Self {
         let data = value
             .iter()
-            .map(|word| word.to_be_bytes())
-            .flatten()
+            .flat_map(|word| word.to_be_bytes())
             .collect::<Vec<u8>>()
             .try_into()
             .unwrap();

@@ -64,7 +64,7 @@ impl AESBlock {
     pub fn print_state(&self) {
         for row in 0..ROW_SIZE {
             self[row].iter().for_each(|byte| print!("{:02X} ", byte));
-            println!("");
+            println!();
         }
     }
 
@@ -110,7 +110,7 @@ impl AESBlock {
         let (_, right) = self.data.split_at_mut(splice_start);
         let (row, _) = right.split_at_mut(ROW_SIZE);
 
-        let mut rowcpy: Vec<u8> = row.iter().cloned().collect();
+        let mut rowcpy = row.to_vec();
         rowcpy.rotate_right(shift_amount);
 
         row.copy_from_slice(&rowcpy);
