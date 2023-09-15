@@ -6,8 +6,13 @@ pub const COL_SIZE: usize = 4;
 pub const ROUND_KEY_SIZE: usize = 16;
 
 pub const ENCRYPTION_ROUNDS_AES128: usize = 10;
+pub const ENCRYPTION_ROUNDS_AES192: usize = 13;
+pub const ENCRYPTION_ROUNDS_AES256: usize = 15;
+
 // 128-bit keys -> 16 byte data
 pub const KEY_SIZE_AES128: usize = 16;
+pub const KEY_SIZE_AES192: usize = 24;
+pub const KEY_SIZE_AES256: usize = 32;
 pub const KEY_ROUND_CONSTANTS: [u8; ENCRYPTION_ROUNDS_AES128] = calc_round_constants();
 
 pub const PADDING_MARKER: u8 = 0x80;

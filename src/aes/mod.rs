@@ -10,9 +10,10 @@ use std::array::TryFromSliceError;
 use self::{
     block::{AESBlock, AESOperation},
     constants::{BLOCK_SIZE, PADDING_BYTE, PADDING_MARKER},
+    key::Key,
 };
 
-pub fn encrypt(plaintext: &[u8], key: key::Key128) -> Vec<u8> {
+pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
     let mut block = AESBlock::new(key);
     let mut ciphertext = Vec::new();
 
@@ -38,7 +39,7 @@ pub fn encrypt(plaintext: &[u8], key: key::Key128) -> Vec<u8> {
     ciphertext
 }
 
-pub fn decrypt(ciphertext: &[u8], key: key::Key128) -> Result<Vec<u8>, String> {
+pub fn decrypt(ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
     let mut block = AESBlock::new(key);
     let mut plaintext = Vec::new();
 

@@ -1,6 +1,6 @@
 mod aes;
 
-use crate::aes::{encrypt, key::Key128};
+use crate::aes::{encrypt, key::Key};
 use aes::{decrypt, helpers::stringify_16_byte_array};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
@@ -19,7 +19,7 @@ fn main() {
         0xe6, 0x6c, 0x37, 0x10,
     ];
 
-    let key = Key128::from([
+    let key = Key::from([
         0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f,
         0x3c,
     ]);

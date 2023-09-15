@@ -5,7 +5,7 @@ use super::{
     },
     gf_math,
     helpers::{fmt_16_byte_array, swap_rows_and_cols},
-    key::{Key128, RoundKey},
+    key::{roundkey::RoundKey, Key},
 };
 use core::fmt;
 use std::fmt::Display;
@@ -26,7 +26,7 @@ pub enum AESOperation {
 }
 
 impl AESBlock {
-    pub fn new(key: Key128) -> AESBlock {
+    pub fn new(key: Key) -> AESBlock {
         // AES Blocks operate on matrices from column vectors
         Self {
             data: Default::default(),
@@ -233,7 +233,7 @@ impl Display for AESOperation {
 mod test {
     use crate::aes::block::{AESBlock, AESOperation};
     use crate::aes::constants::BLOCK_SIZE;
-    use crate::aes::key::Key128;
+    use crate::aes::key::Key;
 
     #[test]
     fn test_encryption() {
@@ -279,7 +279,7 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let key = Key128::new(key_data);
+            let key = Key::from(key_data);
             let mut block = AESBlock::new(key);
             block.set_data(test_case.input_data);
 
@@ -334,7 +334,7 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let key = Key128::new(key_data);
+            let key = Key::from(key_data);
 
             let mut block = AESBlock::new(key);
             block.set_data(test_case.input_data);
@@ -526,7 +526,7 @@ mod test {
             0x14, 0x15,
         ];
         struct TestCase {
-            input_key: Key128,
+            input_key: Key,
             expected_output: String,
         }
 

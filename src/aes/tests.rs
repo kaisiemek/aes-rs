@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::aes::{constants::BLOCK_SIZE, decrypt, encrypt, key::Key128};
+    use crate::aes::{constants::BLOCK_SIZE, decrypt, encrypt, key::Key};
 
     #[test]
     fn test_key_expansion_128() {
@@ -70,7 +70,7 @@ mod test {
         ];
 
         for test_case in test_cases {
-            let key = Key128::new(test_case.input_data);
+            let key = Key::from(test_case.input_data);
 
             for i in 0..11 {
                 let round_key = &key[i];
@@ -105,7 +105,7 @@ mod test {
         .collect();
 
         // NIST test key
-        let key = Key128::from([
+        let key = Key::from([
             0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf,
             0x4f, 0x3c,
         ]);
@@ -167,7 +167,7 @@ mod test {
         .collect();
 
         // NIST test key
-        let key = Key128::from([
+        let key = Key::from([
             0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf,
             0x4f, 0x3c,
         ]);
