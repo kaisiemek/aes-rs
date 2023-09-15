@@ -1,9 +1,8 @@
 mod aes;
 
+use crate::aes::{block::AESBlock, key::Key128};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
-
-use crate::aes::{block::AESBlock, key::Key128};
 
 fn main() {
     SimpleLogger::new()

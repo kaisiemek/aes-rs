@@ -1,11 +1,10 @@
-use std::{fmt::Display, ops::Index};
-
 use super::{
     constants::{
         ENCRYPTION_ROUNDS_AES128, KEY_ROUND_CONSTANTS, KEY_SIZE_AES128, ROUND_KEY_SIZE, S_BOXES,
     },
     helpers::fmt_16_byte_array,
 };
+use std::{fmt::Display, ops::Index};
 
 pub struct Key128 {
     round_keys: Vec<RoundKey>,

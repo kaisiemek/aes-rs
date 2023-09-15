@@ -1,12 +1,11 @@
-use core::fmt;
-use std::collections::VecDeque;
-
 use super::{
-    constants::{BLOCK_SIZE, COL_SIZE, MIX_COL_MATRIX_DATA, ROW_SIZE, S_BOXES},
+    constants::{BLOCK_SIZE, COL_SIZE, MIX_COL_MATRIX, ROW_SIZE, S_BOXES},
     gf_math,
     helpers::{fmt_16_byte_array, swap_rows_and_cols},
     key::{Key128, RoundKey},
 };
+use core::fmt;
+use std::collections::VecDeque;
 
 pub struct AESBlock {
     data: [u8; BLOCK_SIZE],
@@ -88,7 +87,7 @@ impl AESBlock {
         for col in 0..COL_SIZE {
             let cur_col = self.get_col(col);
             for row in 0..ROW_SIZE {
-                let cur_row = MIX_COL_MATRIX_DATA[row];
+                let cur_row = MIX_COL_MATRIX[row];
                 new_data[row] = gf_math::vec_mult(&cur_col, &cur_row);
             }
             self.replace_col(col, &new_data);

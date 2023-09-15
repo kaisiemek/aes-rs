@@ -1,6 +1,5 @@
-use std::fmt;
-
 use super::constants::{BLOCK_SIZE, COL_SIZE, ROW_SIZE};
+use std::fmt;
 
 pub fn fmt_16_byte_array(data: &[u8; 16], f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let word_to_str = |word: &[u8]| -> String {

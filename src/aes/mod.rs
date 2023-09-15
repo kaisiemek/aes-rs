@@ -3,4 +3,4 @@ mod constants;
 mod gf_math;
 mod helpers;
 pub mod key;
-mod test;
+mod tests;
