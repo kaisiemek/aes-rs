@@ -1,5 +1,7 @@
 # Advanced Encryption Standard Rust Implementation
 
+![GitHub Actions Badge](https://github.com/kaisiemek/aes-rs/actions/workflows/rust.yml/badge.svg)
+
 This is an educational project that aims to implement the NIST Advanced Encryption Standard (AES) or Rijndael block cipher in pure Rust with as few dependencies as possible.
 
 ## Resources
