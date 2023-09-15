@@ -1,6 +1,7 @@
 use super::{
     constants::{
-        BLOCK_SIZE, COL_SIZE, ENCRYPTION_ROUNDS_AES128, MIX_COL_MATRIX, ROW_SIZE, S_BOXES,
+        BLOCK_SIZE, COL_SIZE, ENCRYPTION_ROUNDS_AES128, INV_MIX_COL_MATRIX, INV_S_BOXES,
+        MIX_COL_MATRIX, ROW_SIZE, S_BOXES,
     },
     gf_math,
     helpers::{fmt_16_byte_array, swap_rows_and_cols},
@@ -19,8 +20,9 @@ pub enum AESOperation {
     ShiftRows,
     MixColumns,
     AddRoundKey(usize),
-    InverseMixColumn,
+    InverseSubBytes,
     InverseShiftRows,
+    InverseMixColumn,
 }
 
 impl AESBlock {
@@ -37,10 +39,18 @@ impl AESBlock {
         for operation in encryption_sched.iter() {
             self.run(operation)
         }
-
         log::info!("ciphertext:\t{}", self);
     }
 
+    pub fn decrypt(&mut self) {
+        let decryption_sched = AESOperation::decryption_scheme();
+        for operation in decryption_sched.iter() {
+            self.run(operation)
+        }
+        log::info!("plaintext: \t{}", self);
+    }
+
+    #[allow(dead_code)]
     pub fn get_data(&self) -> [u8; BLOCK_SIZE] {
         swap_rows_and_cols(&self.data)
     }
@@ -55,9 +65,9 @@ impl AESBlock {
 
     fn run(&mut self, operation: &AESOperation) {
         match operation {
-            AESOperation::SubBytes => self.sub_bytes(),
-            AESOperation::ShiftRows => self.shift_rows(),
-            AESOperation::MixColumns => self.mix_columns(),
+            AESOperation::SubBytes => self.sub_bytes(false),
+            AESOperation::ShiftRows => self.shift_rows(false),
+            AESOperation::MixColumns => self.mix_columns(false),
             AESOperation::AddRoundKey(round) => {
                 let key = &self.round_keys[*round];
                 log::debug!("{} {}", operation, key);
@@ -68,34 +78,41 @@ impl AESBlock {
                 }
                 return;
             }
-            AESOperation::InverseMixColumn => todo!(),
-            AESOperation::InverseShiftRows => todo!(),
+            AESOperation::InverseSubBytes => self.sub_bytes(true),
+            AESOperation::InverseShiftRows => self.shift_rows(true),
+            AESOperation::InverseMixColumn => self.mix_columns(true),
         }
 
         log::debug!("{} {}", operation, self);
     }
 
-    fn sub_bytes(&mut self) {
+    fn sub_bytes(&mut self, inverse: bool) {
+        let table = if inverse { &INV_S_BOXES } else { &S_BOXES };
         for byte in self.data.iter_mut() {
-            *byte = S_BOXES[*byte as usize];
+            *byte = table[*byte as usize];
         }
     }
 
-    fn shift_rows(&mut self) {
+    fn shift_rows(&mut self, inverse: bool) {
+        let shift_amounts = if inverse { [0, 1, 2, 3] } else { [0, 3, 2, 1] };
         // shift row 0 by 4(0), row 1 by 3, row 2 by 2 and row 3 by 1 to the right
-        for row in 1..ROW_SIZE {
-            let shift_amount = ROW_SIZE - row;
-            self.shift_row(row, shift_amount);
-        }
+        (1..ROW_SIZE).for_each(|row| {
+            self.shift_row(row, shift_amounts[row]);
+        });
     }
 
-    fn mix_columns(&mut self) {
+    fn mix_columns(&mut self, inverse: bool) {
         let mut new_data = [0, 0, 0, 0];
+        let matrix = if inverse {
+            &INV_MIX_COL_MATRIX
+        } else {
+            &MIX_COL_MATRIX
+        };
 
         for col in 0..COL_SIZE {
             let cur_col = self.get_col(col);
             for row in 0..ROW_SIZE {
-                let cur_row = MIX_COL_MATRIX[row];
+                let cur_row = matrix[row];
                 new_data[row] = gf_math::vec_mult(&cur_col, &cur_row);
             }
             self.replace_col(col, &new_data);
@@ -165,12 +182,13 @@ impl fmt::Display for AESBlock {
 impl AESOperation {
     pub fn invert(&self) -> Self {
         match self {
-            AESOperation::SubBytes => AESOperation::SubBytes,
+            AESOperation::SubBytes => AESOperation::InverseSubBytes,
             AESOperation::ShiftRows => AESOperation::InverseShiftRows,
             AESOperation::MixColumns => AESOperation::InverseMixColumn,
             AESOperation::AddRoundKey(round) => AESOperation::AddRoundKey(*round),
-            AESOperation::InverseMixColumn => AESOperation::MixColumns,
+            AESOperation::InverseSubBytes => AESOperation::SubBytes,
             AESOperation::InverseShiftRows => AESOperation::ShiftRows,
+            AESOperation::InverseMixColumn => AESOperation::MixColumns,
         }
     }
 
@@ -209,8 +227,9 @@ impl Display for AESOperation {
             AESOperation::ShiftRows => write!(f, "shiftrows:   \t"),
             AESOperation::MixColumns => write!(f, "mixcols:     \t"),
             AESOperation::AddRoundKey(round) => write!(f, "key {:02}:      \t", round),
-            AESOperation::InverseMixColumn => write!(f, "invmixcols:  \t"),
+            AESOperation::InverseSubBytes => write!(f, "invsubbytes: \t"),
             AESOperation::InverseShiftRows => write!(f, "invshiftrows:\t"),
+            AESOperation::InverseMixColumn => write!(f, "invmixcols:  \t"),
         }
     }
 }
@@ -261,8 +280,44 @@ mod test {
 
         for test_case in test_cases {
             let mut block = AESBlock::new(&test_case.input_data, Default::default());
-            block.shift_rows();
+            block.shift_rows(false);
             assert_eq!(block.to_string(), test_case.expected_output);
+        }
+    }
+
+    #[test]
+    fn test_inverse_shift_row() {
+        struct TestCase {
+            input_data: [u8; BLOCK_SIZE],
+        }
+
+        let test_cases = vec![
+            TestCase {
+                input_data: [
+                    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12,
+                    0x13, 0x14, 0x15,
+                ],
+            },
+            TestCase {
+                input_data: [
+                    0x00, 0x00, 0x01, 0x01, 0x03, 0x03, 0x07, 0x07, 0x0f, 0x0f, 0x1f, 0x1f, 0x3f,
+                    0x3f, 0x7f, 0x7f,
+                ],
+            },
+            TestCase {
+                input_data: [
+                    0x12, 0x22, 0xab, 0xc3, 0xde, 0x12, 0x33, 0x98, 0x75, 0xf7, 0xb2, 0x00, 0xe4,
+                    0xe7, 0x60, 0x10,
+                ],
+            },
+        ];
+
+        for test_case in test_cases {
+            let mut block = AESBlock::new(&test_case.input_data, Default::default());
+            block.shift_rows(false);
+            assert_ne!(block.get_data(), test_case.input_data);
+            block.shift_rows(true);
+            assert_eq!(block.get_data(), test_case.input_data);
         }
     }
 
@@ -306,8 +361,44 @@ mod test {
 
         for test_case in test_cases {
             let mut block = AESBlock::new(&test_case.input_data, Default::default());
-            block.mix_columns();
+            block.mix_columns(false);
             assert_eq!(block.to_string(), test_case.expected_output);
+        }
+    }
+
+    #[test]
+    fn test_inverse_mix_col() {
+        struct TestCase {
+            input_data: [u8; BLOCK_SIZE],
+        }
+
+        let test_cases = vec![
+            TestCase {
+                input_data: [
+                    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12,
+                    0x13, 0x14, 0x15,
+                ],
+            },
+            TestCase {
+                input_data: [
+                    0x00, 0x00, 0x01, 0x01, 0x03, 0x03, 0x07, 0x07, 0x0f, 0x0f, 0x1f, 0x1f, 0x3f,
+                    0x3f, 0x7f, 0x7f,
+                ],
+            },
+            TestCase {
+                input_data: [
+                    0x12, 0x22, 0xab, 0xc3, 0xde, 0x12, 0x33, 0x98, 0x75, 0xf7, 0xb2, 0x00, 0xe4,
+                    0xe7, 0x60, 0x10,
+                ],
+            },
+        ];
+
+        for test_case in test_cases {
+            let mut block = AESBlock::new(&test_case.input_data, Default::default());
+            block.mix_columns(false);
+            assert_ne!(block.get_data(), test_case.input_data);
+            block.mix_columns(true);
+            assert_eq!(block.get_data(), test_case.input_data);
         }
     }
 

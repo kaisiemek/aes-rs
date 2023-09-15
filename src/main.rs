@@ -6,7 +6,7 @@ use simple_logger::SimpleLogger;
 
 fn main() {
     SimpleLogger::new()
-        .with_level(LevelFilter::Debug)
+        .with_level(LevelFilter::Info)
         .init()
         .unwrap();
 
@@ -24,14 +24,8 @@ fn main() {
     key.expand_key();
 
     let mut block = AESBlock::new(&data, key);
-    block.encrypt();
+    println!("input: {}", block);
 
-    let data = block.get_data();
-    println!(
-        "{}",
-        data.iter()
-            .map(|byte| format!("{:02x}", byte).to_string())
-            .collect::<Vec<String>>()
-            .join(" ")
-    );
+    block.encrypt();
+    block.decrypt();
 }
