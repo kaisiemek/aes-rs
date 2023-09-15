@@ -1,7 +1,7 @@
 mod aes;
 
 use crate::aes::{encrypt, key::Key128};
-use aes::helpers::stringify_16_byte_array;
+use aes::{decrypt, helpers::stringify_16_byte_array};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
@@ -24,8 +24,13 @@ fn main() {
         0x3c,
     ]);
 
-    let ciphertext = encrypt(data.as_slice(), key);
+    let ciphertext = encrypt(data.as_slice(), key.clone());
     ciphertext.chunks(16).for_each(|chunk| {
+        println!("{}", stringify_16_byte_array(chunk.try_into().unwrap()));
+    });
+
+    let plaintext = decrypt(ciphertext.as_slice(), key);
+    plaintext.unwrap().chunks(16).for_each(|chunk| {
         println!("{}", stringify_16_byte_array(chunk.try_into().unwrap()));
     });
 }

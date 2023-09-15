@@ -5,6 +5,8 @@ pub mod helpers;
 pub mod key;
 mod tests;
 
+use std::array::TryFromSliceError;
+
 use self::{
     block::{AESBlock, AESOperation},
     constants::{BLOCK_SIZE, PADDING_BYTE, PADDING_MARKER},
@@ -36,6 +38,32 @@ pub fn encrypt(plaintext: &[u8], key: key::Key128) -> Vec<u8> {
     ciphertext
 }
 
+pub fn decrypt(ciphertext: &[u8], key: key::Key128) -> Result<Vec<u8>, String> {
+    let mut block = AESBlock::new(key);
+    let mut plaintext = Vec::new();
+
+    let dec_schedule = AESOperation::decryption_scheme();
+
+    if ciphertext.len() % BLOCK_SIZE != 0 {
+        return Err(format!(
+            "invalid ciphertext length, must be a multiple of 16 bytes, got: {}",
+            ciphertext.len()
+        ));
+    }
+
+    for chunk in ciphertext.chunks(BLOCK_SIZE) {
+        block.set_data(
+            chunk
+                .try_into()
+                .map_err(|e: TryFromSliceError| e.to_string())?,
+        );
+        block.execute(&dec_schedule);
+        plaintext.extend_from_slice(&block.get_data());
+    }
+
+    remove_padding(plaintext)
+}
+
 fn pad_block_data(data: &[u8]) -> ([u8; BLOCK_SIZE], bool) {
     let padded = data.len() < BLOCK_SIZE;
 
@@ -51,4 +79,24 @@ fn pad_block_data(data: &[u8]) -> ([u8; BLOCK_SIZE], bool) {
     }
 
     (data.try_into().unwrap(), padded)
+}
+
+fn remove_padding(mut data: Vec<u8>) -> Result<Vec<u8>, String> {
+    while !data.is_empty() {
+        match data.pop() {
+            Some(PADDING_BYTE) => continue,
+            Some(PADDING_MARKER) => return Ok(data),
+            Some(_) => {
+                return Err(
+                    "invalid padding, encountered non-padding byte before padding marker"
+                        .to_string(),
+                )
+            }
+            None => {
+                return Err("invalid padding, ran out of data before padding marker".to_string())
+            }
+        }
+    }
+
+    unreachable!()
 }

@@ -6,12 +6,12 @@ use super::{
 };
 use std::{fmt::Display, ops::Index};
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Key128 {
     round_keys: Vec<RoundKey>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct RoundKey {
     data: [u8; ROUND_KEY_SIZE],
 }

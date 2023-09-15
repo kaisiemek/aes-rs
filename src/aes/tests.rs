@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::aes::{constants::BLOCK_SIZE, encrypt, key::Key128};
+    use crate::aes::{constants::BLOCK_SIZE, decrypt, encrypt, key::Key128};
 
     #[test]
     fn test_key_expansion_128() {
@@ -140,5 +140,42 @@ mod test {
 
         let ciphertext = encrypt(plaintext.as_slice(), key);
         assert_eq!(ciphertext, expected_ciphertext);
+    }
+
+    #[test]
+    fn test_decryption() {
+        let plaintext: Vec<u8> = vec![
+            vec![
+                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
+                0x17, 0x2a,
+            ],
+            vec![
+                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
+                0x8e, 0x51,
+            ],
+            vec![
+                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
+                0x52, 0xef,
+            ],
+            vec![
+                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
+                0x37, 0x10,
+            ],
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+
+        // NIST test key
+        let key = Key128::from([
+            0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf,
+            0x4f, 0x3c,
+        ]);
+
+        let ciphertext = encrypt(plaintext.as_slice(), key.clone());
+        assert_ne!(ciphertext, plaintext);
+
+        let decrypted_plaintext = decrypt(ciphertext.as_slice(), key).unwrap();
+        assert_eq!(decrypted_plaintext, plaintext);
     }
 }
