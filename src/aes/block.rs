@@ -119,12 +119,15 @@ impl AESBlock {
         }
     }
 
-    // TODO: optimise, do not copy the key data, do index arithmetic instead
     fn add_key(&mut self, round: usize) {
-        let key_column_mat_data = swap_rows_and_cols(self.round_keys[round].get_data());
+        let key_data = self.round_keys[round].get_data();
 
-        for (block_byte, key_byte) in self.data.iter_mut().zip(key_column_mat_data.iter()) {
-            *block_byte ^= key_byte;
+        for col in 0..COL_SIZE {
+            for row in 0..ROW_SIZE {
+                let rowmat_index = row * ROW_SIZE + col;
+                let colmat_index = col * COL_SIZE + row;
+                self.data[colmat_index] ^= key_data[rowmat_index];
+            }
         }
     }
 
