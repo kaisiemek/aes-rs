@@ -1,12 +1,11 @@
-use std::array::TryFromSliceError;
-
-use super::common::get_next_block;
+use super::common::{get_next_block, xor_blocks};
 use crate::aes::{
     block::{ops::AESOperation, AESBlock},
     constants::BLOCK_SIZE,
     key::Key,
     modes::common::remove_padding,
 };
+use std::array::TryFromSliceError;
 
 pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Vec<u8> {
     let enc_schedule = AESOperation::encryption_scheme(key.key_size);
@@ -73,15 +72,4 @@ pub fn decrypt(ciphertext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec
     }
 
     remove_padding(cleartext)
-}
-
-fn xor_blocks(mut block: [u8; BLOCK_SIZE], previous: &[u8]) -> [u8; BLOCK_SIZE] {
-    block
-        .iter_mut()
-        .zip(previous.iter())
-        .for_each(|(block_byte, previous_byte)| {
-            *block_byte ^= *previous_byte;
-        });
-
-    block
 }

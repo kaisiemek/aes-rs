@@ -36,3 +36,14 @@ pub fn remove_padding(mut data: Vec<u8>) -> Result<Vec<u8>, String> {
 
     unreachable!()
 }
+
+pub fn xor_blocks(mut block: [u8; BLOCK_SIZE], previous: &[u8]) -> [u8; BLOCK_SIZE] {
+    block
+        .iter_mut()
+        .zip(previous.iter())
+        .for_each(|(block_byte, previous_byte)| {
+            *block_byte ^= *previous_byte;
+        });
+
+    block
+}

@@ -2,7 +2,7 @@
 mod test {
     use crate::aes::{
         key::Key,
-        modes::{cbc, ecb},
+        modes::{cbc, ecb, ofb},
     };
 
     #[test]
@@ -55,10 +55,11 @@ mod test {
 
     fn run_ecb(expected: Vec<u8>, key: Key) {
         let plaintext = get_nist_test_plaintext();
+
         let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
         let cipher_without_padding = ciphertext[..ciphertext.len() - 16].to_vec();
-
         assert_eq!(cipher_without_padding, expected);
+
         let decrypted = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
         assert_eq!(decrypted, plaintext);
     }
@@ -114,11 +115,90 @@ mod test {
     fn run_cbc(expected: Vec<u8>, key: Key) {
         let plaintext = get_nist_test_plaintext();
         let iv = get_nist_test_iv();
+
         let ciphertext = cbc::encrypt(plaintext.as_slice(), key.clone(), &iv);
         let cipher_without_padding = ciphertext[..ciphertext.len() - 16].to_vec();
-
         assert_eq!(cipher_without_padding, expected);
+
         let decrypted = cbc::decrypt(ciphertext.as_slice(), key, &iv).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn test_aes128_ofb() {
+        let key = get_nist_test_key_128();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "3B3FD92E B72DAD20 333449F8 E83CFB4A",
+                "7789508D 16918F03 F53C52DA C54ED825",
+                "9740051E 9C5FECF6 4344F7A8 2260EDCC",
+                "304C6528 F659C778 66A510D9 C1D6AE5E",
+            )
+            .to_string(),
+        );
+
+        run_ofb(expected_ciphertext.clone(), key.clone());
+        run_partial_ofb(expected_ciphertext, key);
+    }
+
+    #[test]
+    fn test_aes192_ofb() {
+        let key = get_nist_test_key_192();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "CDC80D6F DDF18CAB 34C25909 C99A4174",
+                "FCC28B8D 4C63837C 09E81700 C1100401",
+                "8D9A9AEA C0F6596F 559C6D4D AF59A5F2",
+                "6D9F2008 57CA6C3E 9CAC524B D9ACC92A",
+            )
+            .to_string(),
+        );
+
+        run_ofb(expected_ciphertext.clone(), key.clone());
+        run_partial_ofb(expected_ciphertext, key);
+    }
+
+    #[test]
+    fn test_aes256_ofb() {
+        let key = get_nist_test_key_256();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "DC7E84BF DA79164B 7ECD8486 985D3860",
+                "4FEBDC67 40D20B3A C88F6AD8 2A4FB08D",
+                "71AB47A0 86E86EED F39D1C5B BA97C408",
+                "0126141D 67F37BE8 538F5A8B E740E484",
+            )
+            .to_string(),
+        );
+
+        run_ofb(expected_ciphertext.clone(), key.clone());
+        run_partial_ofb(expected_ciphertext, key);
+    }
+
+    fn run_ofb(expected: Vec<u8>, key: Key) {
+        let plaintext = get_nist_test_plaintext();
+        let iv = get_nist_test_iv();
+
+        let ciphertext = ofb::encrypt(plaintext.as_slice(), key.clone(), &iv);
+        assert_eq!(ciphertext, expected);
+
+        let decrypted = ofb::decrypt(ciphertext.as_slice(), key, &iv).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    fn run_partial_ofb(mut expected: Vec<u8>, key: Key) {
+        let mut plaintext = get_nist_test_plaintext();
+        plaintext.pop();
+        plaintext.pop();
+        expected.pop();
+        expected.pop();
+
+        let iv = get_nist_test_iv();
+
+        let ciphertext = ofb::encrypt(plaintext.as_slice(), key.clone(), &iv);
+        assert_eq!(ciphertext, expected);
+
+        let decrypted = ofb::decrypt(ciphertext.as_slice(), key, &iv).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
