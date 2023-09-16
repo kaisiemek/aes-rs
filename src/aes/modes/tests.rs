@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod test {
-    use crate::aes::{decrypt, encrypt, key::Key};
+    use crate::aes::{key::Key, modes::ecb};
 
     #[test]
-    fn test_encryption_aes128() {
+    fn test_encryption_aes128_ecb() {
         // NIST test plaintext
         let plaintext: Vec<u8> = vec![
             vec![
@@ -61,12 +61,12 @@ mod test {
         .flatten()
         .collect();
 
-        let ciphertext = encrypt(plaintext.as_slice(), key);
+        let ciphertext = ecb::encrypt(plaintext.as_slice(), key);
         assert_eq!(ciphertext, expected_ciphertext);
     }
 
     #[test]
-    fn test_decryption_aes128() {
+    fn test_decryption_aes128_ecb() {
         let plaintext: Vec<u8> = vec![
             vec![
                 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
@@ -95,15 +95,15 @@ mod test {
             0x4f, 0x3c,
         ]);
 
-        let ciphertext = encrypt(plaintext.as_slice(), key.clone());
+        let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
         assert_ne!(ciphertext, plaintext);
 
-        let decrypted_plaintext = decrypt(ciphertext.as_slice(), key).unwrap();
+        let decrypted_plaintext = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
         assert_eq!(decrypted_plaintext, plaintext);
     }
 
     #[test]
-    fn test_encryption_aes192() {
+    fn test_encryption_aes192_ecb() {
         // NIST test plaintext
         let plaintext: Vec<u8> = vec![
             vec![
@@ -156,7 +156,7 @@ mod test {
         .flatten()
         .collect();
 
-        let mut ciphertext = encrypt(plaintext.as_slice(), key);
+        let mut ciphertext = ecb::encrypt(plaintext.as_slice(), key);
 
         // ignore the padding bytes
         ciphertext.truncate(ciphertext.len() - 16);
@@ -164,7 +164,7 @@ mod test {
     }
 
     #[test]
-    fn test_decryption_aes192() {
+    fn test_decryption_aes192_ecb() {
         let plaintext: Vec<u8> = vec![
             vec![
                 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
@@ -193,15 +193,15 @@ mod test {
             0x79, 0xe5, 0x62, 0xf8, 0xea, 0xd2, 0x52, 0x2c, 0x6b, 0x7b,
         ]);
 
-        let ciphertext = encrypt(plaintext.as_slice(), key.clone());
+        let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
         assert_ne!(ciphertext, plaintext);
 
-        let decrypted_plaintext = decrypt(ciphertext.as_slice(), key).unwrap();
+        let decrypted_plaintext = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
         assert_eq!(decrypted_plaintext, plaintext);
     }
 
     #[test]
-    fn test_encryption_aes256() {
+    fn test_encryption_aes256_ecb() {
         // NIST test plaintext
         let plaintext: Vec<u8> = vec![
             vec![
@@ -255,7 +255,7 @@ mod test {
         .flatten()
         .collect();
 
-        let mut ciphertext = encrypt(plaintext.as_slice(), key);
+        let mut ciphertext = ecb::encrypt(plaintext.as_slice(), key);
 
         // ignore the padding bytes
         ciphertext.truncate(ciphertext.len() - 16);
@@ -263,7 +263,7 @@ mod test {
     }
 
     #[test]
-    fn test_decryption_aes256() {
+    fn test_decryption_aes256_ecb() {
         let plaintext: Vec<u8> = vec![
             vec![
                 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
@@ -292,10 +292,10 @@ mod test {
             0x79, 0xe5, 0x62, 0xf8, 0xea, 0xd2, 0x52, 0x2c, 0x6b, 0x7b,
         ]);
 
-        let ciphertext = encrypt(plaintext.as_slice(), key.clone());
+        let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
         assert_ne!(ciphertext, plaintext);
 
-        let decrypted_plaintext = decrypt(ciphertext.as_slice(), key).unwrap();
+        let decrypted_plaintext = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
         assert_eq!(decrypted_plaintext, plaintext);
     }
 }

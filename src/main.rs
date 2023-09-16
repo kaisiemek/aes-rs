@@ -1,6 +1,6 @@
 mod aes;
 
-use crate::aes::{encrypt, key::Key};
+use crate::aes::{encrypt, key::Key, modes::OperationMode};
 use aes::{decrypt, helpers::stringify_16_byte_array};
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
@@ -21,13 +21,14 @@ fn main() {
         "this is a very secret message that must never been read by anyone unauthorised: it even has some unicode characters in it: これは日本語の文",
     );
 
-    let ciphertext = encrypt(plaintext.as_bytes(), key.clone());
+    let ciphertext = encrypt(plaintext.as_bytes(), key.clone(), OperationMode::ECBMode);
     println!("ciphertext");
     ciphertext.chunks(16).for_each(|chunk| {
         println!("{}", stringify_16_byte_array(chunk.try_into().unwrap()));
     });
 
-    let decrypted = decrypt(&ciphertext, key.clone()).expect("Decryption failed");
+    let decrypted =
+        decrypt(&ciphertext, key.clone(), OperationMode::ECBMode).expect("Decryption failed");
     let plaintext = String::from_utf8(decrypted).expect("String construction failed");
     println!("decrypted: {}", plaintext);
 }
