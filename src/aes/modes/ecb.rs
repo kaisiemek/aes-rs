@@ -1,8 +1,8 @@
-use super::common::{pad_block_data, remove_padding};
 use crate::aes::{
     block::{ops::AESOperation, AESBlock},
     constants::BLOCK_SIZE,
     key::Key,
+    modes::common::{get_next_block, remove_padding},
 };
 use std::array::TryFromSliceError;
 
@@ -14,7 +14,7 @@ pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
 
     let mut padded = false;
     for chunk in plaintext.chunks(BLOCK_SIZE) {
-        let (data, block_padded) = pad_block_data(chunk);
+        let (data, block_padded) = get_next_block(chunk);
         padded = block_padded;
         block.set_data(data);
         block.execute(&enc_schedule);
@@ -23,7 +23,7 @@ pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
 
     // Pad the last block if no padding was applied
     if !padded {
-        let (data, _) = pad_block_data(&[]);
+        let (data, _) = get_next_block(&[]);
         block.set_data(data);
         block.execute(&enc_schedule);
         ciphertext.extend_from_slice(&block.get_data());
@@ -33,17 +33,18 @@ pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
 }
 
 pub fn decrypt(ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
-    let dec_schedule = AESOperation::decryption_scheme(key.key_size);
-
-    let mut block = AESBlock::new(key);
-    let mut plaintext = Vec::new();
-
     if ciphertext.len() % BLOCK_SIZE != 0 {
         return Err(format!(
             "invalid ciphertext length, must be a multiple of 16 bytes, got: {}",
             ciphertext.len()
         ));
     }
+    
+    let dec_schedule = AESOperation::decryption_scheme(key.key_size);
+
+    let mut block = AESBlock::new(key);
+    let mut plaintext = Vec::new();
+
 
     for chunk in ciphertext.chunks(BLOCK_SIZE) {
         block.set_data(

@@ -1,6 +1,6 @@
 use crate::aes::constants::{BLOCK_SIZE, PADDING_BYTE, PADDING_MARKER};
 
-pub fn pad_block_data(data: &[u8]) -> ([u8; BLOCK_SIZE], bool) {
+pub fn get_next_block(data: &[u8]) -> ([u8; BLOCK_SIZE], bool) {
     let padded = data.len() < BLOCK_SIZE;
 
     if !padded {
