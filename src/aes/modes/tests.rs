@@ -1,301 +1,174 @@
 #[cfg(test)]
 mod test {
-    use crate::aes::{key::Key, modes::ecb};
+    use crate::aes::{
+        key::Key,
+        modes::{cbc, ecb},
+    };
 
     #[test]
-    fn test_encryption_aes128_ecb() {
-        // NIST test plaintext
-        let plaintext: Vec<u8> = vec![
-            vec![
-                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
-                0x17, 0x2a,
-            ],
-            vec![
-                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
-                0x8e, 0x51,
-            ],
-            vec![
-                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
-                0x52, 0xef,
-            ],
-            vec![
-                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
-                0x37, 0x10,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    fn test_aes128_ecb() {
+        let key = get_nist_test_key_128();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "3AD77BB4 0D7A3660 A89ECAF3 2466EF97",
+                "F5D3D585 03B9699D E785895A 96FDBAAF",
+                "43B1CD7F 598ECE23 881B00E3 ED030688",
+                "7B0C785E 27E8AD3F 82232071 04725DD4",
+            )
+            .to_string(),
+        );
 
-        // NIST test key
-        let key = Key::from([
-            0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf,
-            0x4f, 0x3c,
-        ]);
-
-        // NIST test ciphertext + padding
-        let expected_ciphertext: Vec<u8> = vec![
-            vec![
-                0x3a, 0xd7, 0x7b, 0xb4, 0x0d, 0x7a, 0x36, 0x60, 0xa8, 0x9e, 0xca, 0xf3, 0x24, 0x66,
-                0xef, 0x97,
-            ],
-            vec![
-                0xf5, 0xd3, 0xd5, 0x85, 0x03, 0xb9, 0x69, 0x9d, 0xe7, 0x85, 0x89, 0x5a, 0x96, 0xfd,
-                0xba, 0xaf,
-            ],
-            vec![
-                0x43, 0xb1, 0xcd, 0x7f, 0x59, 0x8e, 0xce, 0x23, 0x88, 0x1b, 0x00, 0xe3, 0xed, 0x03,
-                0x06, 0x88,
-            ],
-            vec![
-                0x7b, 0x0c, 0x78, 0x5e, 0x27, 0xe8, 0xad, 0x3f, 0x82, 0x23, 0x20, 0x71, 0x04, 0x72,
-                0x5d, 0xd4,
-            ],
-            // padding
-            vec![
-                0xf6, 0xc7, 0x1e, 0xed, 0xc3, 0xd9, 0x9b, 0xb1, 0x83, 0xcb, 0x5b, 0x8d, 0x15, 0x68,
-                0xe6, 0x06,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-
-        let ciphertext = ecb::encrypt(plaintext.as_slice(), key);
-        assert_eq!(ciphertext, expected_ciphertext);
+        run_ecb(expected_ciphertext, key);
     }
 
     #[test]
-    fn test_decryption_aes128_ecb() {
-        let plaintext: Vec<u8> = vec![
-            vec![
-                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
-                0x17, 0x2a,
-            ],
-            vec![
-                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
-                0x8e, 0x51,
-            ],
-            vec![
-                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
-                0x52, 0xef,
-            ],
-            vec![
-                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
-                0x37, 0x10,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    fn test_aes192_ecb() {
+        let key = get_nist_test_key_192();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "BD334F1D 6E45F25F F712A214 571FA5CC",
+                "97410484 6D0AD3AD 7734ECB3 ECEE4EEF",
+                "EF7AFD22 70E2E60A DCE0BA2F ACE6444E",
+                "9A4B41BA 738D6C72 FB166916 03C18E0E",
+            )
+            .to_string(),
+        );
 
-        // NIST test key
-        let key = Key::from([
-            0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf,
-            0x4f, 0x3c,
-        ]);
+        run_ecb(expected_ciphertext, key);
+    }
 
+    #[test]
+    fn test_aes256_ecb() {
+        let key = get_nist_test_key_256();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "F3EED1BD B5D2A03C 064B5A7E 3DB181F8",
+                "591CCB10 D410ED26 DC5BA74A 31362870",
+                "B6ED21B9 9CA6F4F9 F153E7B1 BEAFED1D",
+                "23304B7A 39F9F3FF 067D8D8F 9E24ECC7",
+            )
+            .to_string(),
+        );
+
+        run_ecb(expected_ciphertext, key);
+    }
+
+    fn run_ecb(expected: Vec<u8>, key: Key) {
+        let plaintext = get_nist_test_plaintext();
         let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
-        assert_ne!(ciphertext, plaintext);
+        let cipher_without_padding = ciphertext[..ciphertext.len() - 16].to_vec();
 
-        let decrypted_plaintext = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
-        assert_eq!(decrypted_plaintext, plaintext);
+        assert_eq!(cipher_without_padding, expected);
+        let decrypted = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
+        assert_eq!(decrypted, plaintext);
     }
 
     #[test]
-    fn test_encryption_aes192_ecb() {
-        // NIST test plaintext
-        let plaintext: Vec<u8> = vec![
-            vec![
-                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
-                0x17, 0x2a,
-            ],
-            vec![
-                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
-                0x8e, 0x51,
-            ],
-            vec![
-                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
-                0x52, 0xef,
-            ],
-            vec![
-                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
-                0x37, 0x10,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    fn test_aes128_cbc() {
+        let key = get_nist_test_key_128();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "7649ABAC 8119B246 CEE98E9B 12E9197D",
+                "5086CB9B 507219EE 95DB113A 917678B2",
+                "73BED6B8 E3C1743B 7116E69E 22229516",
+                "3FF1CAA1 681FAC09 120ECA30 7586E1A7",
+            )
+            .to_string(),
+        );
 
-        // NIST test key
-        let key = Key::from([
-            0x8e, 0x73, 0xb0, 0xf7, 0xda, 0x0e, 0x64, 0x52, 0xc8, 0x10, 0xf3, 0x2b, 0x80, 0x90,
-            0x79, 0xe5, 0x62, 0xf8, 0xea, 0xd2, 0x52, 0x2c, 0x6b, 0x7b,
-        ]);
-
-        // NIST test ciphertext
-        let expected_ciphertext: Vec<u8> = vec![
-            vec![
-                0xbd, 0x33, 0x4f, 0x1d, 0x6e, 0x45, 0xf2, 0x5f, 0xf7, 0x12, 0xa2, 0x14, 0x57, 0x1f,
-                0xa5, 0xcc,
-            ],
-            vec![
-                0x97, 0x41, 0x04, 0x84, 0x6d, 0x0a, 0xd3, 0xad, 0x77, 0x34, 0xec, 0xb3, 0xec, 0xee,
-                0x4e, 0xef,
-            ],
-            vec![
-                0xef, 0x7a, 0xfd, 0x22, 0x70, 0xe2, 0xe6, 0x0a, 0xdc, 0xe0, 0xba, 0x2f, 0xac, 0xe6,
-                0x44, 0x4e,
-            ],
-            vec![
-                0x9a, 0x4b, 0x41, 0xba, 0x73, 0x8d, 0x6c, 0x72, 0xfb, 0x16, 0x69, 0x16, 0x03, 0xc1,
-                0x8e, 0x0e,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-
-        let mut ciphertext = ecb::encrypt(plaintext.as_slice(), key);
-
-        // ignore the padding bytes
-        ciphertext.truncate(ciphertext.len() - 16);
-        assert_eq!(ciphertext, expected_ciphertext);
+        run_cbc(expected_ciphertext, key);
     }
 
     #[test]
-    fn test_decryption_aes192_ecb() {
-        let plaintext: Vec<u8> = vec![
-            vec![
-                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
-                0x17, 0x2a,
-            ],
-            vec![
-                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
-                0x8e, 0x51,
-            ],
-            vec![
-                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
-                0x52, 0xef,
-            ],
-            vec![
-                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
-                0x37, 0x10,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    fn test_aes192_cbc() {
+        let key = get_nist_test_key_192();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "4F021DB2 43BC633D 7178183A 9FA071E8",
+                "B4D9ADA9 AD7DEDF4 E5E73876 3F69145A",
+                "571B2420 12FB7AE0 7FA9BAAC 3DF102E0",
+                "08B0E279 88598881 D920A9E6 4F5615CD",
+            )
+            .to_string(),
+        );
 
-        // NIST test key
-        let key = Key::from([
-            0x8e, 0x73, 0xb0, 0xf7, 0xda, 0x0e, 0x64, 0x52, 0xc8, 0x10, 0xf3, 0x2b, 0x80, 0x90,
-            0x79, 0xe5, 0x62, 0xf8, 0xea, 0xd2, 0x52, 0x2c, 0x6b, 0x7b,
-        ]);
-
-        let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
-        assert_ne!(ciphertext, plaintext);
-
-        let decrypted_plaintext = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
-        assert_eq!(decrypted_plaintext, plaintext);
+        run_cbc(expected_ciphertext, key);
     }
 
     #[test]
-    fn test_encryption_aes256_ecb() {
-        // NIST test plaintext
-        let plaintext: Vec<u8> = vec![
-            vec![
-                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
-                0x17, 0x2a,
-            ],
-            vec![
-                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
-                0x8e, 0x51,
-            ],
-            vec![
-                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
-                0x52, 0xef,
-            ],
-            vec![
-                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
-                0x37, 0x10,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    fn test_aes256_cbc() {
+        let key = get_nist_test_key_256();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "F58C4C04 D6E5F1BA 779EABFB 5F7BFBD6",
+                "9CFC4E96 7EDB808D 679F777B C6702C7D",
+                "39F23369 A9D9BACF A530E263 04231461",
+                "B2EB05E2 C39BE9FC DA6C1907 8C6A9D1B",
+            )
+            .to_string(),
+        );
 
-        // NIST test key
-        let key = Key::from([
-            0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0, 0x85, 0x7d,
-            0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b, 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3,
-            0x09, 0x14, 0xdf, 0xf4,
-        ]);
-
-        // NIST test ciphertext
-        let expected_ciphertext: Vec<u8> = vec![
-            vec![
-                0xf3, 0xee, 0xd1, 0xbd, 0xb5, 0xd2, 0xa0, 0x3c, 0x06, 0x4b, 0x5a, 0x7e, 0x3d, 0xb1,
-                0x81, 0xf8,
-            ],
-            vec![
-                0x59, 0x1c, 0xcb, 0x10, 0xd4, 0x10, 0xed, 0x26, 0xdc, 0x5b, 0xa7, 0x4a, 0x31, 0x36,
-                0x28, 0x70,
-            ],
-            vec![
-                0xb6, 0xed, 0x21, 0xb9, 0x9c, 0xa6, 0xf4, 0xf9, 0xf1, 0x53, 0xe7, 0xb1, 0xbe, 0xaf,
-                0xed, 0x1d,
-            ],
-            vec![
-                0x23, 0x30, 0x4b, 0x7a, 0x39, 0xf9, 0xf3, 0xff, 0x06, 0x7d, 0x8d, 0x8f, 0x9e, 0x24,
-                0xec, 0xc7,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-
-        let mut ciphertext = ecb::encrypt(plaintext.as_slice(), key);
-
-        // ignore the padding bytes
-        ciphertext.truncate(ciphertext.len() - 16);
-        assert_eq!(ciphertext, expected_ciphertext);
+        run_cbc(expected_ciphertext, key);
     }
 
-    #[test]
-    fn test_decryption_aes256_ecb() {
-        let plaintext: Vec<u8> = vec![
-            vec![
-                0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93,
-                0x17, 0x2a,
-            ],
-            vec![
-                0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf,
-                0x8e, 0x51,
-            ],
-            vec![
-                0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a,
-                0x52, 0xef,
-            ],
-            vec![
-                0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c,
-                0x37, 0x10,
-            ],
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    fn run_cbc(expected: Vec<u8>, key: Key) {
+        let plaintext = get_nist_test_plaintext();
+        let iv = get_nist_test_iv();
+        let ciphertext = cbc::encrypt(plaintext.as_slice(), key.clone(), &iv);
+        let cipher_without_padding = ciphertext[..ciphertext.len() - 16].to_vec();
 
-        // NIST test key
-        let key = Key::from([
-            0x8e, 0x73, 0xb0, 0xf7, 0xda, 0x0e, 0x64, 0x52, 0xc8, 0x10, 0xf3, 0x2b, 0x80, 0x90,
-            0x79, 0xe5, 0x62, 0xf8, 0xea, 0xd2, 0x52, 0x2c, 0x6b, 0x7b,
-        ]);
+        assert_eq!(cipher_without_padding, expected);
+        let decrypted = cbc::decrypt(ciphertext.as_slice(), key, &iv).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
 
-        let ciphertext = ecb::encrypt(plaintext.as_slice(), key.clone());
-        assert_ne!(ciphertext, plaintext);
+    fn get_nist_test_plaintext() -> Vec<u8> {
+        string_to_vec(
+            concat!(
+                "6BC1BEE2 2E409F96 E93D7E11 7393172A",
+                "AE2D8A57 1E03AC9C 9EB76FAC 45AF8E51",
+                "30C81C46 A35CE411 E5FBC119 1A0A52EF",
+                "F69F2445 DF4F9B17 AD2B417B E66C3710"
+            )
+            .to_string(),
+        )
+    }
 
-        let decrypted_plaintext = ecb::decrypt(ciphertext.as_slice(), key).unwrap();
-        assert_eq!(decrypted_plaintext, plaintext);
+    fn get_nist_test_iv() -> [u8; 16] {
+        string_to_vec(concat!("00010203 04050607 08090A0B 0C0D0E0F").to_string())
+            .try_into()
+            .unwrap()
+    }
+
+    fn get_nist_test_key_128() -> Key {
+        let key_data = string_to_vec(concat!("2B7E1516 28AED2A6 ABF71588 09CF4F3C").to_string());
+        key_data.as_slice().try_into().unwrap()
+    }
+
+    fn get_nist_test_key_192() -> Key {
+        let key_data = string_to_vec(
+            concat!("8E73B0F7 DA0E6452 C810F32B 809079E5 62F8EAD2 522C6B7B").to_string(),
+        );
+        key_data.as_slice().try_into().unwrap()
+    }
+
+    fn get_nist_test_key_256() -> Key {
+        let key_data = string_to_vec(
+            concat!(
+                "603DEB10 15CA71BE 2B73AEF0 857D7781",
+                "1F352C07 3B6108D7 2D9810A3 0914DFF4"
+            )
+            .to_string(),
+        );
+        key_data.as_slice().try_into().unwrap()
+    }
+
+    fn string_to_vec(mut str: String) -> Vec<u8> {
+        str = str.replace(' ', "");
+        str = str.replace('\n', "");
+        (0..str.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&str[i..i + 2], 16).unwrap())
+            .collect()
     }
 }
