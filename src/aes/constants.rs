@@ -1,4 +1,4 @@
-use super::gf_math::{calc_lookup_table, calc_round_constants};
+use crate::aes::block::gf_math::{calc_lookup_table, calc_round_constants};
 
 pub const BLOCK_SIZE: usize = 16;
 pub const ROW_SIZE: usize = 4;
@@ -86,10 +86,12 @@ pub const INV_MIX_COL_MATRIX: [[u8; 4]; 4] = [
     [0x0B, 0x0D, 0x09, 0x0E],
 ];
 
-// GF(2^8) ARITHMETIC CONSTANTS
+// ===========================================================================
+//                        GF(2^8) arithmetic constants
+// ===========================================================================
 pub const AES_IRREDUCIBLE_POLY: u8 = 0x1b;
-// Calculate lookup tables for the values 2, 3, 9, 11, 13 and 15
-// These are the values used in the MixColumn and InverseMixColumn matrices
+// calculate lookup tables for the values 2, 3, 9, 11, 13 and 15
+// (these are the values used in the MixColumn and InverseMixColumn matrices)
 pub const GF256_MULT_02_LOOKUP_TABLE: [u8; 256] = calc_lookup_table(2);
 pub const GF256_MULT_03_LOOKUP_TABLE: [u8; 256] = calc_lookup_table(3);
 pub const GF256_MULT_09_LOOKUP_TABLE: [u8; 256] = calc_lookup_table(9);

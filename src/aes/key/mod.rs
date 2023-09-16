@@ -1,6 +1,6 @@
 mod expansion;
 pub mod roundkey;
-mod size;
+pub mod size;
 mod tests;
 mod word;
 

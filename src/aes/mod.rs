@@ -1,20 +1,18 @@
 mod block;
 mod constants;
-mod gf_math;
 pub mod helpers;
 pub mod key;
 mod tests;
 
-use std::array::TryFromSliceError;
-
 use self::{
-    block::{AESBlock, AESOperation},
+    block::{ops::AESOperation, AESBlock},
     constants::{BLOCK_SIZE, PADDING_BYTE, PADDING_MARKER},
     key::Key,
 };
+use std::array::TryFromSliceError;
 
 pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
-    let enc_schedule = AESOperation::encryption_scheme(&key);
+    let enc_schedule = AESOperation::encryption_scheme(key.key_size);
 
     let mut block = AESBlock::new(key);
     let mut ciphertext = Vec::new();
@@ -40,7 +38,7 @@ pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
 }
 
 pub fn decrypt(ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
-    let dec_schedule = AESOperation::decryption_scheme(&key);
+    let dec_schedule = AESOperation::decryption_scheme(key.key_size);
 
     let mut block = AESBlock::new(key);
     let mut plaintext = Vec::new();
