@@ -1,6 +1,7 @@
 mod expansion;
 pub mod roundkey;
 mod size;
+mod tests;
 mod word;
 
 use self::{expansion::expand_key, roundkey::RoundKey, size::KeySize};
@@ -45,18 +46,17 @@ impl TryFrom<&[u8]> for Key {
     type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        match value.len() {
-            KEY_SIZE_AES128 => {
-                let key_data: [u8; KEY_SIZE_AES128] = value.try_into().unwrap();
-                Ok(key_data.into())
-            }
-            KEY_SIZE_AES192 => {
-                let key_data: [u8; KEY_SIZE_AES192] = value.try_into().unwrap();
-                Ok(key_data.into())
-            }
-            KEY_SIZE_AES256 => todo!(),
-            byte_len => Err(format!("Invalid key size: {}", byte_len)),
-        }
+        let key_size = match value.len() {
+            KEY_SIZE_AES128 => KeySize::AES128,
+            KEY_SIZE_AES192 => KeySize::AES192,
+            KEY_SIZE_AES256 => KeySize::AES256,
+            _ => return Err(format!("Invalid key size: {}", value.len())),
+        };
+
+        Ok(Key {
+            key_size,
+            round_keys: expand_key(value, key_size)?,
+        })
     }
 }
 
@@ -74,6 +74,15 @@ impl From<[u8; KEY_SIZE_AES192]> for Key {
         Self {
             key_size: KeySize::AES192,
             round_keys: expand_key(&value, KeySize::AES192).unwrap(),
+        }
+    }
+}
+
+impl From<[u8; KEY_SIZE_AES256]> for Key {
+    fn from(value: [u8; KEY_SIZE_AES256]) -> Self {
+        Self {
+            key_size: KeySize::AES256,
+            round_keys: expand_key(&value, KeySize::AES256).unwrap(),
         }
     }
 }

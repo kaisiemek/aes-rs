@@ -5,7 +5,7 @@ use crate::aes::constants::{
     WORD_SIZE,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum KeySize {
     AES128,
     AES192,
