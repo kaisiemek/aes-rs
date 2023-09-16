@@ -3,13 +3,13 @@ pub mod roundkey;
 mod size;
 mod word;
 
-use self::{expansion::expand_key_128, roundkey::RoundKey, size::KeySize};
-use super::constants::KEY_SIZE_AES128;
+use self::{expansion::expand_key, roundkey::RoundKey, size::KeySize};
+use super::constants::{KEY_SIZE_AES128, KEY_SIZE_AES192, KEY_SIZE_AES256};
 use std::{fmt::Display, ops::Index};
 
 #[derive(Clone, Default)]
 pub struct Key {
-    key_size: KeySize,
+    pub key_size: KeySize,
     round_keys: Vec<RoundKey>,
 }
 
@@ -50,7 +50,10 @@ impl TryFrom<&[u8]> for Key {
                 let key_data: [u8; KEY_SIZE_AES128] = value.try_into().unwrap();
                 Ok(key_data.into())
             }
-            KEY_SIZE_AES192 => todo!(),
+            KEY_SIZE_AES192 => {
+                let key_data: [u8; KEY_SIZE_AES192] = value.try_into().unwrap();
+                Ok(key_data.into())
+            }
             KEY_SIZE_AES256 => todo!(),
             byte_len => Err(format!("Invalid key size: {}", byte_len)),
         }
@@ -61,7 +64,16 @@ impl From<[u8; KEY_SIZE_AES128]> for Key {
     fn from(value: [u8; KEY_SIZE_AES128]) -> Self {
         Self {
             key_size: KeySize::AES128,
-            round_keys: expand_key_128(value),
+            round_keys: expand_key(&value, KeySize::AES128).unwrap(),
+        }
+    }
+}
+
+impl From<[u8; KEY_SIZE_AES192]> for Key {
+    fn from(value: [u8; KEY_SIZE_AES192]) -> Self {
+        Self {
+            key_size: KeySize::AES192,
+            round_keys: expand_key(&value, KeySize::AES192).unwrap(),
         }
     }
 }

@@ -3,21 +3,44 @@ use super::gf_math::{calc_lookup_table, calc_round_constants};
 pub const BLOCK_SIZE: usize = 16;
 pub const ROW_SIZE: usize = 4;
 pub const COL_SIZE: usize = 4;
+
+// ===========================================================================
+//                        key generation constants
+// ===========================================================================
 pub const ROUND_KEY_SIZE: usize = 16;
+pub const WORD_SIZE: usize = 4;
+
+pub const KEY_SIZE_AES128: usize = 128 / 8;
+pub const KEY_SIZE_AES192: usize = 192 / 8;
+pub const KEY_SIZE_AES256: usize = 256 / 8;
 
 pub const ENCRYPTION_ROUNDS_AES128: usize = 10;
-pub const ENCRYPTION_ROUNDS_AES192: usize = 13;
+pub const ENCRYPTION_ROUNDS_AES192: usize = 12;
 pub const ENCRYPTION_ROUNDS_AES256: usize = 15;
 
-// 128-bit keys -> 16 byte data
-pub const KEY_SIZE_AES128: usize = 16;
-pub const KEY_SIZE_AES192: usize = 24;
-pub const KEY_SIZE_AES256: usize = 32;
+pub const ROUND_WORDS_AES128: usize = KEY_SIZE_AES128 / WORD_SIZE;
+pub const ROUND_WORDS_AES192: usize = KEY_SIZE_AES192 / WORD_SIZE;
+pub const ROUND_WORDS_AES256: usize = KEY_SIZE_AES256 / WORD_SIZE;
+
+pub const EXPANDED_KEY_SIZE_AES128: usize = ROUND_KEY_SIZE * (ENCRYPTION_ROUNDS_AES128 + 1);
+pub const EXPANDED_KEY_SIZE_AES192: usize = ROUND_KEY_SIZE * (ENCRYPTION_ROUNDS_AES192 + 1);
+pub const EXPANDED_KEY_SIZE_AES256: usize = ROUND_KEY_SIZE * (ENCRYPTION_ROUNDS_AES256 + 1);
+
+pub const EXPANSION_ROUNDS_AES128: usize =
+    EXPANDED_KEY_SIZE_AES128 / (ROUND_WORDS_AES128 * WORD_SIZE);
+pub const EXPANSION_ROUNDS_AES192: usize =
+    EXPANDED_KEY_SIZE_AES192 / (ROUND_WORDS_AES192 * WORD_SIZE);
+pub const EXPANSION_ROUNDS_AES256: usize =
+    EXPANDED_KEY_SIZE_AES256 / (ROUND_WORDS_AES256 * WORD_SIZE);
+
 pub const KEY_ROUND_CONSTANTS: [u8; ENCRYPTION_ROUNDS_AES128] = calc_round_constants();
 
 pub const PADDING_MARKER: u8 = 0x80;
 pub const PADDING_BYTE: u8 = 0x00;
 
+// ===========================================================================
+//                        block operation constants
+// ===========================================================================
 pub const S_BOXES: [u8; 256] = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,

@@ -1,38 +1,65 @@
-use super::{roundkey::RoundKey, word::Word};
-use crate::aes::constants::{ENCRYPTION_ROUNDS_AES128, KEY_SIZE_AES128};
+use super::{roundkey::RoundKey, size::KeySize, word::Word};
+use crate::aes::constants::WORD_SIZE;
 
-pub fn expand_key_128(key_data: [u8; KEY_SIZE_AES128]) -> Vec<RoundKey> {
-    let mut round_key_data: Vec<[Word; 4]> = vec![];
+pub fn expand_key(key_data: &[u8], key_size: KeySize) -> Result<Vec<RoundKey>, String> {
+    if key_data.len() != key_size.byte_size() {
+        return Err(format!(
+            "invalid key size: expected {} bytes, got {}",
+            key_size.byte_size(),
+            key_data.len()
+        ));
+    }
 
+    let expanded_word_size = key_size.expanded_word_size();
+
+    let mut expanded_data: Vec<Word> = Vec::with_capacity(expanded_word_size);
     // the first round key is the key itself
-    let mut current_round: [Word; 4] = Default::default();
-    for (i, chunk) in key_data.chunks(4).enumerate() {
-        current_round[i] = chunk.try_into().unwrap();
-    }
-    round_key_data.push(current_round);
-
-    while round_key_data.len() < ENCRYPTION_ROUNDS_AES128 + 1 {
-        round_key_data.push(generate_round_keys_128(&round_key_data));
+    for word in key_data.chunks(WORD_SIZE) {
+        expanded_data.push(word.try_into()?);
     }
 
-    round_key_data.into_iter().map(|key| key.into()).collect()
+    while expanded_data.len() < expanded_word_size {
+        expanded_data.push(generate_next_word(
+            &expanded_data,
+            key_size.expansion_round_word_width(),
+        )?);
+    }
+
+    Ok(make_round_keys(expanded_data))
 }
 
-fn generate_round_keys_128(round_data: &Vec<[Word; 4]>) -> [Word; 4] {
-    let previous_round = round_data.last().expect(
-            "round keys were unexpectedly empty, generate_round_key must only be called after the initial key has been added to the vector."
-        );
-    let mut current_round: [Word; 4] = Default::default();
+fn generate_next_word(round_data: &Vec<Word>, round_len: usize) -> Result<Word, String> {
+    let index = round_data.len();
+    let round = round_data.len() / round_len;
+    let round_index = index % round_len;
 
-    current_round[0] = previous_round[0]
-        ^ previous_round[3]
-            .rot_word()
-            .sub_word()
-            .apply_rcon(round_data.len());
-
-    for word_index in 1..4 {
-        current_round[word_index] = current_round[word_index - 1] ^ previous_round[word_index];
+    if round < 1 {
+        return Err("can't generate the next word before the initial key data has been copied to the expanded data vector".to_string());
     }
 
-    current_round
+    // the word for index i i always calculated from i-1 and i-Nr 
+    let previous_round_word = round_data[index - round_len];
+    let mut previous_word = round_data[index - 1];
+
+    if round_index == 0 {
+        previous_word = previous_word.rot_word().sub_word().apply_rcon(round);
+    }
+
+    Ok(previous_round_word ^ previous_word)
+}
+
+fn make_round_keys(round_data: Vec<Word>) -> Vec<RoundKey> {
+    let mut round_keys = Vec::new();
+    assert!(
+        round_data.len() % 4 == 0,
+        "round key data must be a multiple of 4 words, got {}",
+        round_data.len()
+    );
+
+    round_data.chunks(4).for_each(|chunk| {
+        let key_data: [Word; 4] = chunk.try_into().unwrap();
+        round_keys.push(key_data.into());
+    });
+
+    round_keys
 }

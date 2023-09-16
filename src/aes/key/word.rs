@@ -40,11 +40,13 @@ impl From<[u8; 4]> for Word {
 }
 
 impl TryFrom<&[u8]> for Word {
-    type Error = TryFromSliceError;
+    type Error = String;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Ok(Self {
-            data: value.try_into()?,
+            data: value
+                .try_into()
+                .map_err(|err: TryFromSliceError| err.to_string())?,
         })
     }
 }

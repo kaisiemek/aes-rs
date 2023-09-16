@@ -14,12 +14,12 @@ use self::{
 };
 
 pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
+    let enc_schedule = AESOperation::encryption_scheme(&key);
+
     let mut block = AESBlock::new(key);
     let mut ciphertext = Vec::new();
 
-    let enc_schedule = AESOperation::encryption_scheme();
     let mut padded = false;
-
     for chunk in plaintext.chunks(BLOCK_SIZE) {
         let (data, block_padded) = pad_block_data(chunk);
         padded = block_padded;
@@ -40,10 +40,10 @@ pub fn encrypt(plaintext: &[u8], key: Key) -> Vec<u8> {
 }
 
 pub fn decrypt(ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
+    let dec_schedule = AESOperation::decryption_scheme(&key);
+
     let mut block = AESBlock::new(key);
     let mut plaintext = Vec::new();
-
-    let dec_schedule = AESOperation::decryption_scheme();
 
     if ciphertext.len() % BLOCK_SIZE != 0 {
         return Err(format!(

@@ -187,14 +187,15 @@ impl AESOperation {
         }
     }
 
-    pub fn encryption_scheme() -> Vec<Self> {
-        let mut operations = vec![];
+    pub fn encryption_scheme(key: &Key) -> Vec<Self> {
+        let encryption_rounds = key.key_size.encryption_rounds();
+        let mut operations = Vec::with_capacity((encryption_rounds + 1) * 4);
 
         // before first round: add initial key
         operations.push(AESOperation::AddRoundKey(0));
 
         // rounds 1 to n-1
-        for round in 1..ENCRYPTION_ROUNDS_AES128 {
+        for round in 1..encryption_rounds {
             operations.push(AESOperation::SubBytes);
             operations.push(AESOperation::ShiftRows);
             operations.push(AESOperation::MixColumns);
@@ -204,13 +205,13 @@ impl AESOperation {
         // last round, no mix columns
         operations.push(AESOperation::SubBytes);
         operations.push(AESOperation::ShiftRows);
-        operations.push(AESOperation::AddRoundKey(ENCRYPTION_ROUNDS_AES128));
+        operations.push(AESOperation::AddRoundKey(encryption_rounds));
 
         operations
     }
 
-    pub fn decryption_scheme() -> Vec<Self> {
-        let operations = Self::encryption_scheme();
+    pub fn decryption_scheme(key: &Key) -> Vec<Self> {
+        let operations = Self::encryption_scheme(key);
         operations.iter().rev().map(|op| op.invert()).collect()
     }
 }
@@ -236,7 +237,7 @@ mod test {
     use crate::aes::key::Key;
 
     #[test]
-    fn test_encryption() {
+    fn test_encrypt_block() {
         let key_data = [
             0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF,
             0x4F, 0x3C,
@@ -280,10 +281,11 @@ mod test {
 
         for test_case in test_cases {
             let key = Key::from(key_data);
+            let enc_schedule = AESOperation::encryption_scheme(&key);
+
             let mut block = AESBlock::new(key);
             block.set_data(test_case.input_data);
 
-            let enc_schedule = AESOperation::encryption_scheme();
             block.execute(&enc_schedule);
 
             assert_eq!(block.to_string(), test_case.expected_output);
@@ -291,7 +293,7 @@ mod test {
     }
 
     #[test]
-    fn test_decryption() {
+    fn test_decrypt_block() {
         let key_data = [
             0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF,
             0x4F, 0x3C,
@@ -335,12 +337,12 @@ mod test {
 
         for test_case in test_cases {
             let key = Key::from(key_data);
+            let enc_schedule = AESOperation::encryption_scheme(&key);
+            let dec_schedule = AESOperation::decryption_scheme(&key);
 
             let mut block = AESBlock::new(key);
             block.set_data(test_case.input_data);
 
-            let enc_schedule = AESOperation::encryption_scheme();
-            let dec_schedule = AESOperation::decryption_scheme();
             block.execute(&enc_schedule);
             assert_ne!(block.to_string(), test_case.expected_output);
 
