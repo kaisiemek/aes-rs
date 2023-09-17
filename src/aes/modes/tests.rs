@@ -203,7 +203,7 @@ mod test {
     }
 
     #[test]
-    fn test_aes128_cfb() {
+    fn test_aes128_cfb_128() {
         let key = get_nist_test_key_128();
         let expected_ciphertext = string_to_vec(
             concat!(
@@ -215,12 +215,12 @@ mod test {
             .to_string(),
         );
 
-        run_cfb(expected_ciphertext.clone(), key.clone());
-        run_partial_cfb(expected_ciphertext, key);
+        run_cfb_128(expected_ciphertext.clone(), key.clone());
+        run_partial_cfb_128(expected_ciphertext, key);
     }
 
     #[test]
-    fn test_aes192_cfb() {
+    fn test_aes192_cfb_128() {
         let key = get_nist_test_key_192();
         let expected_ciphertext = string_to_vec(
             concat!(
@@ -232,12 +232,12 @@ mod test {
             .to_string(),
         );
 
-        run_cfb(expected_ciphertext.clone(), key.clone());
-        run_partial_cfb(expected_ciphertext, key);
+        run_cfb_128(expected_ciphertext.clone(), key.clone());
+        run_partial_cfb_128(expected_ciphertext, key);
     }
 
     #[test]
-    fn test_aes256_cfb() {
+    fn test_aes256_cfb_128() {
         let key = get_nist_test_key_256();
         let expected_ciphertext = string_to_vec(
             concat!(
@@ -249,11 +249,11 @@ mod test {
             .to_string(),
         );
 
-        run_cfb(expected_ciphertext.clone(), key.clone());
-        run_partial_cfb(expected_ciphertext, key);
+        run_cfb_128(expected_ciphertext.clone(), key.clone());
+        run_partial_cfb_128(expected_ciphertext, key);
     }
 
-    fn run_cfb(expected: Vec<u8>, key: Key) {
+    fn run_cfb_128(expected: Vec<u8>, key: Key) {
         let plaintext = get_nist_test_plaintext();
         let iv = get_nist_test_iv();
 
@@ -276,7 +276,7 @@ mod test {
         assert_eq!(decrypted, plaintext);
     }
 
-    fn run_partial_cfb(mut expected: Vec<u8>, key: Key) {
+    fn run_partial_cfb_128(mut expected: Vec<u8>, key: Key) {
         let mut plaintext = get_nist_test_plaintext();
         plaintext.pop();
         plaintext.pop();
@@ -296,6 +296,73 @@ mod test {
 
         let decrypted =
             cfb::decrypt(ciphertext.as_slice(), key, &iv, CFBSegmentSize::Bit128).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn test_aes128_cfb_8() {
+        let key = get_nist_test_key_128();
+        let expected_ciphertext =
+            string_to_vec(concat!("3B79424C 9C0DD436 BACE9E0E D4586A4F").to_string());
+
+        run_cfb_8(expected_ciphertext.clone(), key.clone());
+        run_partial_cfb_8(expected_ciphertext, key);
+    }
+
+    #[test]
+    fn test_aes192_cfb_8() {
+        let key = get_nist_test_key_192();
+        let expected_ciphertext =
+            string_to_vec(concat!("CDA2521E F0A905CA 44CD057C BF0D47A0").to_string());
+
+        run_cfb_8(expected_ciphertext.clone(), key.clone());
+        run_partial_cfb_8(expected_ciphertext, key);
+    }
+
+    #[test]
+    fn test_aes256_cfb_8() {
+        let key = get_nist_test_key_256();
+        let expected_ciphertext =
+            string_to_vec(concat!("DC1F1A85 20A64DB5 5FCC8AC5 54844E88").to_string());
+
+        run_cfb_8(expected_ciphertext.clone(), key.clone());
+        run_partial_cfb_8(expected_ciphertext, key);
+    }
+
+    fn run_cfb_8(expected: Vec<u8>, key: Key) {
+        let mut plaintext = get_nist_test_plaintext();
+        plaintext.truncate(expected.len());
+        let iv = get_nist_test_iv();
+
+        let ciphertext =
+            cfb::encrypt(plaintext.as_slice(), key.clone(), &iv, CFBSegmentSize::Bit8).unwrap();
+        assert_eq!(ciphertext, expected);
+
+        let decrypted = cfb::decrypt(
+            ciphertext.as_slice(),
+            key.clone(),
+            &iv,
+            CFBSegmentSize::Bit8,
+        )
+        .unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    fn run_partial_cfb_8(mut expected: Vec<u8>, key: Key) {
+        let mut plaintext = get_nist_test_plaintext();
+        plaintext.truncate(expected.len());
+
+        plaintext.pop();
+        expected.pop();
+
+        let iv = get_nist_test_iv();
+
+        let ciphertext =
+            cfb::encrypt(plaintext.as_slice(), key.clone(), &iv, CFBSegmentSize::Bit8).unwrap();
+        assert_eq!(ciphertext, expected);
+
+        let decrypted =
+            cfb::decrypt(ciphertext.as_slice(), key, &iv, CFBSegmentSize::Bit8).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
