@@ -21,7 +21,7 @@ fn main() {
         "this is a very secret message that must never been read by anyone unauthorised: it even has some unicode characters in it: これは日本語の文",
     );
 
-    let ciphertext = encrypt(plaintext.as_bytes(), key.clone(), OperationMode::ECB);
+    let ciphertext = encrypt(plaintext.as_bytes(), key.clone(), OperationMode::ECB).unwrap();
     println!("ciphertext");
     ciphertext.chunks(16).for_each(|chunk| {
         println!("{}", stringify_16_byte_array(chunk.try_into().unwrap()));

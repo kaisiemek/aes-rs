@@ -7,7 +7,7 @@ use crate::aes::{
 };
 use std::array::TryFromSliceError;
 
-pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Vec<u8> {
+pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec<u8>, String> {
     let enc_schedule = AESOperation::encryption_scheme(key.key_size);
 
     let mut block = AESBlock::new(key);
@@ -38,7 +38,7 @@ pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Vec<u8> {
         ciphertext.extend_from_slice(&block.get_data());
     }
 
-    ciphertext
+    Ok(ciphertext)
 }
 
 pub fn decrypt(ciphertext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec<u8>, String> {

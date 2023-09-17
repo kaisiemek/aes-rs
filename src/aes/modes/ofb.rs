@@ -4,7 +4,7 @@ use crate::aes::{
     key::Key,
 };
 
-pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Vec<u8> {
+pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec<u8>, String> {
     let enc_schedule = AESOperation::encryption_scheme(key.key_size);
     let mut block = AESBlock::new(key);
     let mut ciphertext = Vec::with_capacity(plaintext.len());
@@ -24,11 +24,11 @@ pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Vec<u8> {
         ciphertext.extend(current_block);
     }
 
-    ciphertext
+    Ok(ciphertext)
 }
 
 pub fn decrypt(ciphertext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec<u8>, String> {
-    Ok(encrypt(ciphertext, key, iv))
+    encrypt(ciphertext, key, iv)
 }
 
 fn xor_partial_blocks(block: &mut [u8], previous: &[u8]) {
