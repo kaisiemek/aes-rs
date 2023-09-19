@@ -8,7 +8,7 @@ pub fn add(a: u8, b: u8) -> u8 {
     a ^ b
 }
 
-pub fn mult(a: u8, b: u8) -> u8 {
+pub fn mul(a: u8, b: u8) -> u8 {
     match b {
         1 => a,
         2 => GF256_MULT_02_LOOKUP_TABLE[a as usize],
@@ -26,12 +26,6 @@ pub fn mult(a: u8, b: u8) -> u8 {
             gf256_mult(a, b)
         }
     }
-}
-
-pub fn vec_mult(a: &[u8; 4], b: &[u8; 4]) -> u8 {
-    a.iter()
-        .zip(b.iter())
-        .fold(0, |acc, (a, b)| add(acc, mult(*a, *b)))
 }
 
 pub const fn calc_lookup_table(a: u8) -> [u8; 256] {

@@ -1,6 +1,21 @@
-use crate::aes::constants::{BLOCK_SIZE, PADDING_BYTE, PADDING_MARKER};
+use crate::aes::{
+    config::{ops::AESOperation, AESConfig},
+    constants::{BLOCK_SIZE, PADDING_BYTE, PADDING_MARKER},
+    datastructures::{block::Block, colmat::ColMatrix},
+    key::Key,
+};
 
-pub fn get_next_block(data: &[u8]) -> ([u8; BLOCK_SIZE], bool) {
+pub fn encrypt_block(block: Block, config: &AESConfig) -> Block {
+    let colmat = ColMatrix::new(block);
+    run_block_operations(colmat, &config.enc_schedule, &config.key).block()
+}
+
+pub fn decrypt_block(block: Block, config: &AESConfig) -> Block {
+    let colmat = ColMatrix::new(block);
+    run_block_operations(colmat, &config.dec_schedule, &config.key).block()
+}
+
+pub fn get_next_block(data: &[u8]) -> (Block, bool) {
     let padded = data.len() < BLOCK_SIZE;
 
     if !padded {
@@ -9,10 +24,7 @@ pub fn get_next_block(data: &[u8]) -> ([u8; BLOCK_SIZE], bool) {
 
     let mut data = data.to_vec();
     data.push(PADDING_MARKER);
-
-    while data.len() != BLOCK_SIZE {
-        data.push(PADDING_BYTE);
-    }
+    data.resize(BLOCK_SIZE, PADDING_BYTE);
 
     (data.try_into().unwrap(), padded)
 }
@@ -37,13 +49,20 @@ pub fn remove_padding(mut data: Vec<u8>) -> Result<Vec<u8>, String> {
     unreachable!()
 }
 
-pub fn xor_blocks(mut block: [u8; BLOCK_SIZE], previous: &[u8]) -> [u8; BLOCK_SIZE] {
-    block
-        .iter_mut()
-        .zip(previous.iter())
-        .for_each(|(block_byte, previous_byte)| {
-            *block_byte ^= *previous_byte;
-        });
+fn run_block_operations(
+    mut colmat: ColMatrix,
+    operations: &[AESOperation],
+    key: &Key,
+) -> ColMatrix {
+    operations.iter().for_each(|op| match op {
+        AESOperation::SubBytes => colmat.sub_bytes(),
+        AESOperation::ShiftRows => colmat.shift_rows(),
+        AESOperation::MixColumns => colmat.mix_columns(),
+        AESOperation::AddRoundKey(round) => colmat += key[*round],
+        AESOperation::InverseSubBytes => colmat.inv_sub_bytes(),
+        AESOperation::InverseShiftRows => colmat.inv_shift_rows(),
+        AESOperation::InverseMixColumn => colmat.inv_mix_columns(),
+    });
 
-    block
+    colmat
 }

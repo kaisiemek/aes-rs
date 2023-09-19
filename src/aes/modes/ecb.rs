@@ -1,38 +1,37 @@
 use crate::aes::{
-    block::{ops::AESOperation, AESBlock},
+    config::AESConfig,
     constants::BLOCK_SIZE,
-    key::Key,
-    modes::common::{get_next_block, remove_padding},
+    datastructures::block::Block,
+    modes::{
+        common::{decrypt_block, encrypt_block, get_next_block, remove_padding},
+        OperationMode,
+    },
 };
-use std::array::TryFromSliceError;
 
-pub fn encrypt(plaintext: &[u8], key: Key) -> Result<Vec<u8>, String> {
-    let enc_schedule = AESOperation::encryption_scheme(key.key_size);
+pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+    ensure_ecb(config)?;
 
-    let mut block = AESBlock::new(key);
     let mut ciphertext = Vec::new();
+    let mut was_padded = false;
+    let mut block: Block;
 
-    let mut padded = false;
     for chunk in plaintext.chunks(BLOCK_SIZE) {
-        let (data, block_padded) = get_next_block(chunk);
-        padded = block_padded;
-        block.set_data(data);
-        block.execute(&enc_schedule);
-        ciphertext.extend_from_slice(&block.get_data());
+        (block, was_padded) = get_next_block(chunk);
+        ciphertext.extend(encrypt_block(block, config).bytes())
     }
 
     // Pad the last block if no padding was applied
-    if !padded {
-        let (data, _) = get_next_block(&[]);
-        block.set_data(data);
-        block.execute(&enc_schedule);
-        ciphertext.extend_from_slice(&block.get_data());
+    if !was_padded {
+        let (block, _) = get_next_block(&[]);
+        ciphertext.extend(encrypt_block(block, config).bytes());
     }
 
     Ok(ciphertext)
 }
 
-pub fn decrypt(ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
+pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+    ensure_ecb(config)?;
+
     if ciphertext.len() % BLOCK_SIZE != 0 {
         return Err(format!(
             "invalid ciphertext length, must be a multiple of 16 bytes, got: {}",
@@ -40,20 +39,21 @@ pub fn decrypt(ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
         ));
     }
 
-    let dec_schedule = AESOperation::decryption_scheme(key.key_size);
-
-    let mut block = AESBlock::new(key);
     let mut plaintext = Vec::new();
-
     for chunk in ciphertext.chunks(BLOCK_SIZE) {
-        block.set_data(
-            chunk
-                .try_into()
-                .map_err(|e: TryFromSliceError| e.to_string())?,
-        );
-        block.execute(&dec_schedule);
-        plaintext.extend_from_slice(&block.get_data());
+        let block = chunk.try_into()?;
+        plaintext.extend(decrypt_block(block, config).bytes());
     }
 
     remove_padding(plaintext)
+}
+
+fn ensure_ecb(config: &AESConfig) -> Result<(), String> {
+    match config.mode {
+        OperationMode::ECB => Ok(()),
+        _ => Err(format!(
+            "Invalid operation mode, expected ECB, got {:?}",
+            config.mode
+        )),
+    }
 }

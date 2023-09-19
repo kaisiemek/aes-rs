@@ -1,7 +1,10 @@
-use super::{roundkey::RoundKey, size::KeySize, word::Word};
-use crate::aes::constants::{ROUND_KEY_SIZE, WORD_SIZE};
+use crate::aes::{
+    constants::{ROUND_KEY_SIZE, WORD_SIZE},
+    datastructures::{block::Block, word::Word},
+    key::size::KeySize,
+};
 
-pub fn expand_key(key_data: &[u8], key_size: KeySize) -> Result<Vec<RoundKey>, String> {
+pub fn expand_key(key_data: &[u8], key_size: KeySize) -> Result<Vec<Block>, String> {
     if key_data.len() != key_size.byte_size() {
         return Err(format!(
             "invalid key size: expected {} bytes, got {}",
@@ -57,7 +60,7 @@ fn generate_next_word(round_data: &Vec<Word>, key_size: KeySize) -> Result<Word,
     Ok(previous_round_word ^ previous_word)
 }
 
-fn make_round_keys(round_data: Vec<Word>) -> Result<Vec<RoundKey>, String> {
+fn make_round_keys(round_data: Vec<Word>) -> Result<Vec<Block>, String> {
     let mut round_keys = Vec::new();
 
     if round_data.len() % (ROUND_KEY_SIZE / WORD_SIZE) != 0 {

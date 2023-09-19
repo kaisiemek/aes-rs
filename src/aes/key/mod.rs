@@ -1,26 +1,23 @@
 mod expansion;
-pub mod roundkey;
 pub mod size;
 mod tests;
-mod word;
 
-use self::{expansion::expand_key, roundkey::RoundKey, size::KeySize};
-use super::constants::{KEY_SIZE_AES128, KEY_SIZE_AES192, KEY_SIZE_AES256};
+use super::{
+    constants::{KEY_SIZE_AES128, KEY_SIZE_AES192, KEY_SIZE_AES256},
+    datastructures::block::Block,
+    key::{expansion::expand_key, size::KeySize},
+};
 use std::{fmt::Display, ops::Index};
 
 #[derive(Clone, Default)]
 pub struct Key {
     pub key_size: KeySize,
-    round_keys: Vec<RoundKey>,
+    round_keys: Vec<Block>,
 }
 
 impl Key {
-    pub fn get_round_key(&self, round: usize) -> Option<&RoundKey> {
+    pub fn get_round_key(&self, round: usize) -> Option<&Block> {
         self.round_keys.get(round)
-    }
-
-    pub fn iter(self) -> std::vec::IntoIter<RoundKey> {
-        self.round_keys.into_iter()
     }
 }
 
@@ -35,7 +32,7 @@ impl Display for Key {
 }
 
 impl Index<usize> for Key {
-    type Output = RoundKey;
+    type Output = Block;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.get_round_key(index).unwrap()

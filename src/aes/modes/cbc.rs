@@ -1,47 +1,43 @@
-use super::common::{get_next_block, xor_blocks};
 use crate::aes::{
-    block::{ops::AESOperation, AESBlock},
+    config::AESConfig,
     constants::BLOCK_SIZE,
-    key::Key,
-    modes::common::remove_padding,
+    datastructures::block::Block,
+    modes::{
+        common::{decrypt_block, encrypt_block, get_next_block, remove_padding},
+        OperationMode,
+    },
 };
-use std::array::TryFromSliceError;
 
-pub fn encrypt(plaintext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec<u8>, String> {
-    let enc_schedule = AESOperation::encryption_scheme(key.key_size);
-
-    let mut block = AESBlock::new(key);
+pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+    let iv = ensure_cbc_mode(config)?;
     let mut ciphertext = Vec::with_capacity(plaintext.len());
 
-    let mut padded = false;
-    let mut previous_block = iv.as_slice();
-    let mut current_block: [u8; 16];
+    let mut was_padded = false;
+    let mut previous_block = iv;
+    let mut current_block: Block;
 
     for chunk in plaintext.chunks(BLOCK_SIZE) {
-        (current_block, padded) = get_next_block(chunk);
-        current_block = xor_blocks(current_block, previous_block);
+        (current_block, was_padded) = get_next_block(chunk);
+        current_block ^= previous_block;
+        current_block = encrypt_block(current_block, config);
 
-        block.set_data(current_block);
-        block.execute(&enc_schedule);
-
-        ciphertext.extend(block.get_data());
-        previous_block = &ciphertext[ciphertext.len() - BLOCK_SIZE..];
+        ciphertext.extend(current_block.bytes());
+        previous_block = current_block;
     }
 
     // Pad the last block if no padding was applied
-    if !padded {
+    if !was_padded {
         let (mut padded_block, _) = get_next_block(&[]);
-        padded_block = xor_blocks(padded_block, previous_block);
-
-        block.set_data(padded_block);
-        block.execute(&enc_schedule);
-        ciphertext.extend_from_slice(&block.get_data());
+        padded_block ^= previous_block;
+        padded_block = encrypt_block(padded_block, config);
+        ciphertext.extend(padded_block.bytes());
     }
 
     Ok(ciphertext)
 }
 
-pub fn decrypt(ciphertext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec<u8>, String> {
+pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+    let iv = ensure_cbc_mode(config)?;
     if ciphertext.len() % BLOCK_SIZE != 0 {
         return Err(format!(
             "invalid ciphertext length, must be a multiple of 16 bytes, got: {}",
@@ -49,27 +45,30 @@ pub fn decrypt(ciphertext: &[u8], key: Key, iv: &[u8; BLOCK_SIZE]) -> Result<Vec
         ));
     }
 
-    let dec_schedule = AESOperation::decryption_scheme(key.key_size);
-
-    let mut block = AESBlock::new(key);
     let mut cleartext = Vec::with_capacity(ciphertext.len());
 
-    let mut previous_block = iv.as_slice();
-    let mut current_block: [u8; 16];
+    let mut previous_block = iv;
+    let mut current_block: Block;
 
     for chunk in ciphertext.chunks(BLOCK_SIZE) {
-        current_block = chunk
-            .try_into()
-            .map_err(|err: TryFromSliceError| err.to_string())?;
+        (current_block, _) = get_next_block(chunk);
 
-        block.set_data(current_block);
-        block.execute(&dec_schedule);
+        let decrypted_block = decrypt_block(current_block, config);
+        let cleartext_block = decrypted_block ^ previous_block;
+        cleartext.extend(cleartext_block.bytes());
 
-        let decrypted_block = block.get_data();
-        cleartext.extend(xor_blocks(decrypted_block, previous_block));
-
-        previous_block = &ciphertext[cleartext.len() - BLOCK_SIZE..cleartext.len()];
+        previous_block = current_block;
     }
 
     remove_padding(cleartext)
+}
+
+fn ensure_cbc_mode(config: &AESConfig) -> Result<Block, String> {
+    match config.mode {
+        OperationMode::CBC { iv } => Ok(iv),
+        _ => Err(format!(
+            "Invalid operation mode, expected CBC, got {:?}",
+            config.mode
+        )),
+    }
 }

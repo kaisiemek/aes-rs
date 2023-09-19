@@ -5,46 +5,38 @@ mod ecb;
 mod ofb;
 mod tests;
 
-use crate::aes::{constants::BLOCK_SIZE, key::Key};
+use crate::aes::{config::AESConfig, datastructures::block::Block};
 
 #[allow(dead_code, clippy::upper_case_acronyms)]
+#[derive(Debug)]
 pub enum OperationMode {
     ECB,
-    CBC {
-        iv: [u8; BLOCK_SIZE],
-    },
-    OFB {
-        iv: [u8; BLOCK_SIZE],
-    },
-    CFB {
-        iv: [u8; BLOCK_SIZE],
-        seg_size: CFBSegmentSize,
-    },
+    CBC { iv: Block },
+    OFB { iv: Block },
+    CFB { iv: Block, seg_size: CFBSegmentSize },
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum CFBSegmentSize {
     Bit128,
     Bit8,
 }
 
-impl OperationMode {
-    pub fn encrypt(&self, plaintext: &[u8], key: Key) -> Result<Vec<u8>, String> {
-        match self {
-            OperationMode::ECB => ecb::encrypt(plaintext, key),
-            OperationMode::CBC { iv } => cbc::encrypt(plaintext, key, iv),
-            OperationMode::OFB { iv } => ofb::encrypt(plaintext, key, iv),
-            OperationMode::CFB { iv, seg_size } => cfb::encrypt(plaintext, key, iv, *seg_size),
-        }
+pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+    match config.mode {
+        OperationMode::ECB => ecb::encrypt(plaintext, config),
+        OperationMode::CBC { iv: _ } => cbc::encrypt(plaintext, config),
+        OperationMode::OFB { iv: _ } => ofb::encrypt(plaintext, config),
+        OperationMode::CFB { iv: _, seg_size: _ } => cfb::encrypt(plaintext, config),
     }
+}
 
-    pub fn decrypt(&self, ciphertext: &[u8], key: Key) -> Result<Vec<u8>, String> {
-        match self {
-            OperationMode::ECB => ecb::decrypt(ciphertext, key),
-            OperationMode::CBC { iv } => cbc::decrypt(ciphertext, key, iv),
-            OperationMode::OFB { iv } => ofb::decrypt(ciphertext, key, iv),
-            OperationMode::CFB { iv, seg_size } => cfb::decrypt(ciphertext, key, iv, *seg_size),
-        }
+pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+    match config.mode {
+        OperationMode::ECB => ecb::decrypt(ciphertext, config),
+        OperationMode::CBC { iv: _ } => cbc::decrypt(ciphertext, config),
+        OperationMode::OFB { iv: _ } => ofb::decrypt(ciphertext, config),
+        OperationMode::CFB { iv: _, seg_size: _ } => cfb::decrypt(ciphertext, config),
     }
 }
