@@ -9,7 +9,7 @@ use crate::aes::{
 };
 
 pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
-    ensure_ecb(config)?;
+    ensure_ecb_mode(config)?;
 
     let mut ciphertext = Vec::new();
     let mut was_padded = false;
@@ -30,7 +30,7 @@ pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> 
 }
 
 pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
-    ensure_ecb(config)?;
+    ensure_ecb_mode(config)?;
 
     if ciphertext.len() % BLOCK_SIZE != 0 {
         return Err(format!(
@@ -48,7 +48,7 @@ pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String>
     remove_padding(plaintext)
 }
 
-fn ensure_ecb(config: &AESConfig) -> Result<(), String> {
+fn ensure_ecb_mode(config: &AESConfig) -> Result<(), String> {
     match config.mode {
         OperationMode::ECB => Ok(()),
         _ => Err(format!(

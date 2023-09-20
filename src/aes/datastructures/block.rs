@@ -122,18 +122,6 @@ impl From<[Word; 4]> for Block {
     }
 }
 
-impl From<Block> for [Word; 4] {
-    fn from(value: Block) -> Self {
-        value
-            .bytes()
-            .chunks(4)
-            .map(|chunk| Word::try_from(chunk).unwrap())
-            .collect::<Vec<Word>>()
-            .try_into()
-            .unwrap()
-    }
-}
-
 impl TryFrom<&[u8]> for Block {
     type Error = String;
 
@@ -159,6 +147,24 @@ impl TryFrom<Vec<u8>> for Block {
 impl From<Block> for [u8; BLOCK_SIZE] {
     fn from(value: Block) -> Self {
         value.0.to_be_bytes()
+    }
+}
+
+impl From<Block> for u128 {
+    fn from(value: Block) -> Self {
+        value.0
+    }
+}
+
+impl From<Block> for [Word; 4] {
+    fn from(value: Block) -> Self {
+        value
+            .bytes()
+            .chunks(4)
+            .map(|chunk| Word::try_from(chunk).unwrap())
+            .collect::<Vec<Word>>()
+            .try_into()
+            .unwrap()
     }
 }
 

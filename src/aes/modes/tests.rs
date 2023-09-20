@@ -4,7 +4,7 @@ mod test {
         config::AESConfig,
         datastructures::block::Block,
         key::Key,
-        modes::{cbc, cfb, ecb, ofb, CFBSegmentSize, OperationMode},
+        modes::{cbc, cfb, ctr, ecb, ofb, CFBSegmentSize, OperationMode},
     };
 
     #[test]
@@ -376,6 +376,86 @@ mod test {
         assert_eq!(decrypted, plaintext);
     }
 
+    #[test]
+    fn test_aes128_ctr() {
+        let key = get_nist_test_key_128();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "874D6191 B620E326 1BEF6864 990DB6CE",
+                "9806F66B 7970FDFF 8617187B B9FFFDFF",
+                "5AE4DF3E DBD5D35E 5B4F0902 0DB03EAB",
+                "1E031DDA 2FBE03D1 792170A0 F3009CEE",
+            )
+            .to_string(),
+        );
+
+        run_ctr(expected_ciphertext.clone(), key.clone());
+        run_partial_ctr(expected_ciphertext, key);
+    }
+
+    #[test]
+    fn test_aes192_ctr() {
+        let key = get_nist_test_key_192();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "1ABC9324 17521CA2 4F2B0459 FE7E6E0B",
+                "090339EC 0AA6FAEF D5CCC2C6 F4CE8E94",
+                "1E36B26B D1EBC670 D1BD1D66 5620ABF7",
+                "4F78A7F6 D2980958 5A97DAEC 58C6B050",
+            )
+            .to_string(),
+        );
+
+        run_ctr(expected_ciphertext.clone(), key.clone());
+        run_partial_ctr(expected_ciphertext, key);
+    }
+
+    #[test]
+    fn test_aes256_ctr() {
+        let key = get_nist_test_key_256();
+        let expected_ciphertext = string_to_vec(
+            concat!(
+                "601EC313 775789A5 B7A7F504 BBF3D228",
+                "F443E3CA 4D62B59A CA84E990 CACAF5C5",
+                "2B0930DA A23DE94C E87017BA 2D84988D",
+                "DFC9C58D B67AADA6 13C2DD08 457941A6",
+            )
+            .to_string(),
+        );
+
+        run_ctr(expected_ciphertext.clone(), key.clone());
+        run_partial_ctr(expected_ciphertext, key);
+    }
+
+    fn run_ctr(expected: Vec<u8>, key: Key) {
+        let plaintext = get_nist_test_plaintext();
+        let iv = get_nist_initial_counter();
+        let config = AESConfig::new(key, OperationMode::CTR { iv });
+
+        let ciphertext = ctr::encrypt(plaintext.as_slice(), &config).unwrap();
+        assert_eq!(ciphertext, expected);
+
+        let decrypted = ctr::decrypt(ciphertext.as_slice(), &config).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    fn run_partial_ctr(mut expected: Vec<u8>, key: Key) {
+        let mut plaintext = get_nist_test_plaintext();
+        plaintext.pop();
+        plaintext.pop();
+        expected.pop();
+        expected.pop();
+
+        let iv = get_nist_initial_counter();
+        let config = AESConfig::new(key, OperationMode::CTR { iv });
+
+        let ciphertext = ctr::encrypt(plaintext.as_slice(), &config).unwrap();
+        assert_eq!(ciphertext, expected);
+
+        let decrypted = ctr::decrypt(ciphertext.as_slice(), &config).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
     fn get_nist_test_plaintext() -> Vec<u8> {
         string_to_vec(
             concat!(
@@ -390,6 +470,12 @@ mod test {
 
     fn get_nist_test_iv() -> Block {
         string_to_vec(concat!("00010203 04050607 08090A0B 0C0D0E0F").to_string())
+            .try_into()
+            .unwrap()
+    }
+
+    fn get_nist_initial_counter() -> Block {
+        string_to_vec("F0F1F2F3 F4F5F6F7 F8F9FAFB FCFDFEFF".to_string())
             .try_into()
             .unwrap()
     }

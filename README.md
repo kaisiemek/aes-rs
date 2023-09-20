@@ -17,6 +17,8 @@ This is an educational project that aims to implement the NIST Advanced Encrypti
 
 - transform project into a lib crate
 - encrypt Read trait objects instead of Vecs/byte slices
-- CFB arbitrary chunk size support
+- CFB: more chunk sizes (multiples of 8), **padding!**, (CFB-1?)
 - CTR mode
 - CCM and/or GCM mode
+- (XTR mode?)
+- (Key generation?)

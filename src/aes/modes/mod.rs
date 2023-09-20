@@ -1,6 +1,7 @@
 mod cbc;
 mod cfb;
 mod common;
+mod ctr;
 mod ecb;
 mod ofb;
 mod tests;
@@ -14,6 +15,7 @@ pub enum OperationMode {
     CBC { iv: Block },
     OFB { iv: Block },
     CFB { iv: Block, seg_size: CFBSegmentSize },
+    CTR { iv: Block },
 }
 
 #[allow(dead_code)]
@@ -29,6 +31,7 @@ pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> 
         OperationMode::CBC { iv: _ } => cbc::encrypt(plaintext, config),
         OperationMode::OFB { iv: _ } => ofb::encrypt(plaintext, config),
         OperationMode::CFB { iv: _, seg_size: _ } => cfb::encrypt(plaintext, config),
+        OperationMode::CTR { iv: _ } => ctr::encrypt(plaintext, config),
     }
 }
 
@@ -38,5 +41,6 @@ pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String>
         OperationMode::CBC { iv: _ } => cbc::decrypt(ciphertext, config),
         OperationMode::OFB { iv: _ } => ofb::decrypt(ciphertext, config),
         OperationMode::CFB { iv: _, seg_size: _ } => cfb::decrypt(ciphertext, config),
+        OperationMode::CTR { iv: _ } => ctr::decrypt(ciphertext, config),
     }
 }

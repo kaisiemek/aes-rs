@@ -39,7 +39,7 @@ fn ensure_ofb_mode(config: &AESConfig) -> Result<Block, String> {
     match config.mode {
         OperationMode::OFB { iv } => Ok(iv),
         _ => Err(format!(
-            "Invalid operation mode, expected CBC, got {:?}",
+            "Invalid operation mode, expected OFB, got {:?}",
             config.mode
         )),
     }
