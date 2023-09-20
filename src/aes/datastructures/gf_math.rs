@@ -18,10 +18,9 @@ pub fn mul(a: u8, b: u8) -> u8 {
         13 => GF256_MULT_13_LOOKUP_TABLE[a as usize],
         14 => GF256_MULT_14_LOOKUP_TABLE[a as usize],
         _ => {
-            log::warn!(
-                "had to perform a manual gf258 multiplication: {} * {}",
-                a,
-                b
+            eprintln!(
+                "had to perform a manual gf256 multiplication: {:#02x} * {:#02x}",
+                a, b
             );
             gf256_mult(a, b)
         }

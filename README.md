@@ -12,3 +12,11 @@ This is an educational project that aims to implement the NIST Advanced Encrypti
 - [Christof Paar's Understanding Cryptography (German version: Kryptographie Verständlich)](https://www.crypto-textbook.com)
 - [Christ Paar's lectures on YouTube (German, English version available)](https://www.youtube.com/watch?v=NHuibtoL_qk)
 - [reference implementation used to generate validation data](https://www.cryptool.org/en/cto/aes-step-by-step)
+
+## TODO
+
+- transform project into a lib crate
+- encrypt Read trait objects instead of Vecs/byte slices
+- CFB arbitrary chunk size support
+- CTR mode
+- CCM and/or GCM mode
