@@ -1,30 +1,51 @@
 use crate::aes::{
-    config::AESConfig,
+    config::{AESConfig, OperationMode},
     constants::BLOCK_SIZE,
     datastructures::block::Block,
-    modes::{common::encrypt_block, OperationMode},
+    modes::common::{encrypt_block, read_data, write_data},
 };
 
-pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+pub fn encrypt(
+    plaintext: &mut impl std::io::Read,
+    ciphertext: &mut impl std::io::Write,
+    config: &AESConfig,
+) -> Result<usize, String> {
     let iv = ensure_ctr_mode(config)?;
     let mut ctr = Counter::new(iv);
 
-    let mut ciphertext = Vec::with_capacity(plaintext.len());
-    let mut current_block: Vec<u8>;
+    let mut buf = [0; BLOCK_SIZE];
+    let mut block_bytes_read;
+    let mut total_bytes_written = 0;
 
-    for chunk in plaintext.chunks(BLOCK_SIZE) {
-        current_block = chunk.to_vec();
-        let output = encrypt_block(ctr.get_block(), config);
-        xor_partial_blocks(&mut current_block, &output.bytes());
-        ciphertext.extend(current_block);
+    let mut input_block: Block;
+    let mut output_block: Block;
+    let mut ciphertext_block: Block;
+
+    loop {
+        block_bytes_read = read_data(plaintext, &mut buf)?;
+
+        if block_bytes_read == 0 {
+            break;
+        }
+
+        input_block = ctr.get_block();
+        output_block = encrypt_block(input_block, config);
+        ciphertext_block = output_block ^ buf.as_slice();
+
+        total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), block_bytes_read)?;
+
         ctr.increment();
     }
 
-    Ok(ciphertext)
+    Ok(total_bytes_written)
 }
 
-pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
-    encrypt(ciphertext, config)
+pub fn decrypt(
+    ciphertext: &mut impl std::io::Read,
+    plaintext: &mut impl std::io::Write,
+    config: &AESConfig,
+) -> Result<usize, String> {
+    encrypt(ciphertext, plaintext, config)
 }
 
 struct Counter {
@@ -56,18 +77,9 @@ impl Counter {
     }
 }
 
-fn xor_partial_blocks(block: &mut [u8], previous: &[u8]) {
-    block
-        .iter_mut()
-        .zip(previous.iter())
-        .for_each(|(block_byte, previous_byte)| {
-            *block_byte ^= *previous_byte;
-        });
-}
-
 fn ensure_ctr_mode(config: &AESConfig) -> Result<Block, String> {
     match config.mode {
-        OperationMode::CTR { iv } => Ok(iv),
+        OperationMode::CTR { iv } => Ok(iv.into()),
         _ => Err(format!(
             "Invalid operation mode, expected CTR, got {:?}",
             config.mode

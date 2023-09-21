@@ -1,7 +1,7 @@
 use crate::aes::{constants::BLOCK_SIZE, datastructures::word::Word};
 use std::{array::TryFromSliceError, fmt::Display};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Block(u128);
 
 impl Block {
@@ -47,6 +47,18 @@ impl Block {
         Word(value as u32)
     }
 
+    pub fn rotate_left(&mut self, bytes: usize) {
+        let mut u128_bytes = self.bytes();
+        u128_bytes.rotate_left(bytes);
+        self.0 = u128::from_be_bytes(u128_bytes);
+    }
+
+    pub fn rotate_right(&mut self, bytes: usize) {
+        let mut u128_bytes = self.bytes();
+        u128_bytes.rotate_right(bytes);
+        self.0 = u128::from_be_bytes(u128_bytes);
+    }
+
     pub fn bytes(self) -> [u8; BLOCK_SIZE] {
         self.0.to_be_bytes()
     }
@@ -56,10 +68,14 @@ impl Block {
     }
 }
 
-// Addition in GF(2^8) is equivalent to the XOR operation
+// =================================================================
+//                   arithmetic operations
+// =================================================================
+
 impl std::ops::Add for Block {
     type Output = Block;
 
+    // Addition in GF(2^8) is equivalent to the XOR operation
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(mut self, rhs: Self) -> Self::Output {
         self ^= rhs;
@@ -68,13 +84,25 @@ impl std::ops::Add for Block {
 }
 
 impl std::ops::AddAssign for Block {
+    // Addition in GF(2^8) is equivalent to the XOR operation
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, rhs: Self) {
         *self ^= rhs;
     }
 }
 
-// Addition in GF(2^8) is equivalent to the XOR operation
+impl std::ops::ShlAssign<usize> for Block {
+    fn shl_assign(&mut self, rhs: usize) {
+        self.rotate_left(rhs);
+    }
+}
+
+impl std::ops::ShrAssign<usize> for Block {
+    fn shr_assign(&mut self, rhs: usize) {
+        self.rotate_right(rhs);
+    }
+}
+
 impl std::ops::BitXor for Block {
     type Output = Block;
 
@@ -103,6 +131,48 @@ impl std::ops::BitXorAssign<&Block> for Block {
         *self ^= *rhs;
     }
 }
+
+// allow partial block XORs
+impl std::ops::BitXorAssign<Block> for &mut [u8] {
+    fn bitxor_assign(&mut self, rhs: Block) {
+        self.iter_mut()
+            .zip(rhs.bytes().iter())
+            .for_each(|(slice_byte, block_byte)| *slice_byte ^= block_byte);
+    }
+}
+
+impl std::ops::BitXor<&[u8]> for Block {
+    type Output = Block;
+
+    fn bitxor(mut self, rhs: &[u8]) -> Self::Output {
+        self ^= rhs;
+        self
+    }
+}
+
+impl std::ops::BitXorAssign<&[u8]> for Block {
+    fn bitxor_assign(&mut self, rhs: &[u8]) {
+        let mut u128_bytes: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+
+        let n = std::cmp::min(BLOCK_SIZE, rhs.len());
+        u128_bytes[0..n].copy_from_slice(rhs);
+
+        let block = u128::from_be_bytes(u128_bytes);
+        self.0 ^= block;
+    }
+}
+
+impl std::ops::BitXorAssign<Block> for Vec<u8> {
+    fn bitxor_assign(&mut self, rhs: Block) {
+        self.iter_mut()
+            .zip(rhs.bytes().iter())
+            .for_each(|(vec_byte, block_byte)| *vec_byte ^= block_byte);
+    }
+}
+
+// =================================================================
+//                      type conversions
+// =================================================================
 
 impl From<[u8; 16]> for Block {
     fn from(value: [u8; 16]) -> Self {

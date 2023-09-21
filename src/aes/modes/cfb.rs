@@ -1,87 +1,99 @@
 use crate::aes::{
-    config::AESConfig,
+    config::{AESConfig, CFBSegmentSize, OperationMode},
     datastructures::block::Block,
-    modes::{common::encrypt_block, CFBSegmentSize, OperationMode},
+    modes::common::{encrypt_block, read_data, write_data},
 };
 
-// TODO: make this prettier, check if vec conversions can be avoided
-pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+pub fn encrypt(
+    plaintext: &mut impl std::io::Read,
+    ciphertext: &mut impl std::io::Write,
+    config: &AESConfig,
+) -> Result<usize, String> {
     let (iv, seg_size) = ensure_cfb_mode(config)?;
     let chunk_size = get_chunk_size(seg_size);
 
-    let mut block: Block;
-    let mut ciphertext = Vec::with_capacity(plaintext.len());
-    let mut previous_ciphertext_block = iv.bytes().to_vec();
+    let mut buf: Vec<u8> = vec![0; chunk_size];
+    let mut block_bytes_read;
+    let mut total_bytes_written = 0;
 
-    for chunk in plaintext.chunks(chunk_size) {
-        let cleartext_segment = chunk.to_vec();
-        let input = previous_ciphertext_block.clone();
+    let mut input_block: Block;
+    let mut output_block: Block;
+    let mut previous_block = iv;
 
-        block = input.try_into()?;
-        block = encrypt_block(block, config);
+    loop {
+        block_bytes_read = read_data(plaintext, &mut buf)?;
+        if block_bytes_read == 0 {
+            break;
+        }
 
-        let output = block.bytes().to_vec();
-        let ciphertext_segment = xor_partial_blocks(cleartext_segment, &output);
-        ciphertext.extend_from_slice(&ciphertext_segment);
+        input_block = previous_block;
+        output_block = encrypt_block(input_block, config);
+
+        // ciphertext block = cleartext XOR encrypted block, may be partial
+        buf ^= output_block;
+
+        total_bytes_written += write_data(ciphertext, &buf, block_bytes_read)?;
 
         match seg_size {
-            CFBSegmentSize::Bit128 => previous_ciphertext_block = ciphertext_segment,
+            CFBSegmentSize::Bit128 => previous_block = buf.clone().try_into()?,
             CFBSegmentSize::Bit8 => {
-                previous_ciphertext_block[0] = ciphertext_segment[0];
-                previous_ciphertext_block.rotate_left(1);
+                // overwrite the 8 MSBs and then rotate to set the 8 LSBs
+                // to those of the current ciphertext block
+                previous_block.set_byte(0, buf[0]);
+                previous_block <<= 1;
             }
         }
     }
 
-    Ok(ciphertext)
+    Ok(total_bytes_written)
 }
 
-pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+pub fn decrypt(
+    ciphertext: &mut impl std::io::Read,
+    plaintext: &mut impl std::io::Write,
+    config: &AESConfig,
+) -> Result<usize, String> {
     let (iv, seg_size) = ensure_cfb_mode(config)?;
     let chunk_size = get_chunk_size(seg_size);
 
-    let mut block: Block;
-    let mut plaintext = Vec::with_capacity(ciphertext.len());
-    let mut previous_ciphertext_block = iv.bytes().to_vec();
+    let mut buf: Vec<u8> = vec![0; chunk_size];
+    let mut block_bytes_read;
+    let mut total_bytes_written = 0;
 
-    for chunk in ciphertext.chunks(chunk_size) {
-        let ciphertext_segment = chunk.to_vec();
-        let input = previous_ciphertext_block.clone();
+    let mut plaintext_block: Block;
+    let mut input_block: Block;
+    let mut output_block: Block;
+    let mut previous_block = iv;
 
-        block = input.try_into()?;
-        block = encrypt_block(block, config);
+    loop {
+        block_bytes_read = read_data(ciphertext, &mut buf)?;
+        if block_bytes_read == 0 {
+            break;
+        }
 
-        let mut output = block.bytes().to_vec();
-        output.truncate(ciphertext_segment.len());
-        let cleartext_segment = xor_partial_blocks(output, &ciphertext_segment);
-        plaintext.extend_from_slice(&cleartext_segment);
+        input_block = previous_block;
+        output_block = encrypt_block(input_block, config);
+        plaintext_block = output_block ^ buf.as_slice();
+
+        total_bytes_written += write_data(plaintext, &plaintext_block.bytes(), block_bytes_read)?;
 
         match seg_size {
-            CFBSegmentSize::Bit128 => previous_ciphertext_block = ciphertext_segment,
+            CFBSegmentSize::Bit128 => previous_block = buf.clone().try_into()?,
             CFBSegmentSize::Bit8 => {
-                previous_ciphertext_block[0] = ciphertext_segment[0];
-                previous_ciphertext_block.rotate_left(1);
+                // overwrite the 8 MSBs and then rotate to set the 8 LSBs
+                // to those of the current ciphertext block
+                previous_block.set_byte(0, buf[0]);
+                previous_block <<= 1;
             }
         }
     }
 
-    Ok(plaintext)
-}
-
-fn xor_partial_blocks(mut block: Vec<u8>, other: &[u8]) -> Vec<u8> {
-    block
-        .iter_mut()
-        .zip(other.iter())
-        .for_each(|(block_byte, other_byte)| {
-            *block_byte ^= *other_byte;
-        });
-
-    block
+    Ok(total_bytes_written)
 }
 
 fn ensure_cfb_mode(config: &AESConfig) -> Result<(Block, CFBSegmentSize), String> {
     match config.mode {
-        OperationMode::CFB { iv, seg_size } => Ok((iv, seg_size)),
+        OperationMode::CFB { iv, seg_size } => Ok((iv.into(), seg_size)),
         _ => Err(format!(
             "Invalid operation mode, expected CFB, got {:?}",
             config.mode

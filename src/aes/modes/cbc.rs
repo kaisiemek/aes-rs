@@ -1,71 +1,111 @@
 use crate::aes::{
-    config::AESConfig,
+    config::{AESConfig, OperationMode},
     constants::BLOCK_SIZE,
     datastructures::block::Block,
-    modes::{
-        common::{decrypt_block, encrypt_block, get_next_block, remove_padding},
-        OperationMode,
-    },
+    modes::common::{decrypt_block, encrypt_block, pad_buffer, read_data, unpad_block, write_data},
 };
+use std::collections::VecDeque;
 
-pub fn encrypt(plaintext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+pub fn encrypt(
+    plaintext: &mut impl std::io::Read,
+    ciphertext: &mut impl std::io::Write,
+    config: &AESConfig,
+) -> Result<usize, String> {
     let iv = ensure_cbc_mode(config)?;
-    let mut ciphertext = Vec::with_capacity(plaintext.len());
 
-    let mut was_padded = false;
+    let mut buf: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+    let mut block_bytes_read;
+    let mut total_bytes_written = 0;
+
+    let mut plaintext_block: Block;
+    let mut ciphertext_block: Block;
+    let mut input_block: Block;
     let mut previous_block = iv;
-    let mut current_block: Block;
 
-    for chunk in plaintext.chunks(BLOCK_SIZE) {
-        (current_block, was_padded) = get_next_block(chunk);
-        current_block ^= previous_block;
-        current_block = encrypt_block(current_block, config);
+    loop {
+        block_bytes_read = read_data(plaintext, &mut buf)?;
+        if block_bytes_read != BLOCK_SIZE {
+            break;
+        }
 
-        ciphertext.extend(current_block.bytes());
-        previous_block = current_block;
+        plaintext_block = buf.into();
+        input_block = plaintext_block ^ previous_block;
+        ciphertext_block = encrypt_block(input_block, config);
+        previous_block = ciphertext_block;
+
+        total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), block_bytes_read)?;
     }
 
-    // Pad the last block if no padding was applied
-    if !was_padded {
-        let (mut padded_block, _) = get_next_block(&[]);
-        padded_block ^= previous_block;
-        padded_block = encrypt_block(padded_block, config);
-        ciphertext.extend(padded_block.bytes());
-    }
+    plaintext_block = pad_buffer(buf, block_bytes_read);
+    input_block = plaintext_block ^ previous_block;
+    ciphertext_block = encrypt_block(input_block, config);
+    total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), BLOCK_SIZE)?;
 
-    Ok(ciphertext)
+    Ok(total_bytes_written)
 }
 
-pub fn decrypt(ciphertext: &[u8], config: &AESConfig) -> Result<Vec<u8>, String> {
+pub fn decrypt(
+    ciphertext: &mut impl std::io::Read,
+    plaintext: &mut impl std::io::Write,
+    config: &AESConfig,
+) -> Result<usize, String> {
     let iv = ensure_cbc_mode(config)?;
-    if ciphertext.len() % BLOCK_SIZE != 0 {
-        return Err(format!(
-            "invalid ciphertext length, must be a multiple of 16 bytes, got: {}",
-            ciphertext.len()
-        ));
-    }
 
-    let mut cleartext = Vec::with_capacity(ciphertext.len());
+    let mut buf = [0; BLOCK_SIZE];
+    let mut total_bytes_written = 0;
+    let mut block_bytes_read;
 
+    let mut plaintext_block: Block;
+    let mut ciphertext_block: Block;
+    let mut output_block: Block;
     let mut previous_block = iv;
-    let mut current_block: Block;
 
-    for chunk in ciphertext.chunks(BLOCK_SIZE) {
-        (current_block, _) = get_next_block(chunk);
+    let mut write_queue: VecDeque<Block> = VecDeque::new();
 
-        let decrypted_block = decrypt_block(current_block, config);
-        let cleartext_block = decrypted_block ^ previous_block;
-        cleartext.extend(cleartext_block.bytes());
+    loop {
+        block_bytes_read = read_data(ciphertext, &mut buf)?;
+        if block_bytes_read == 0 {
+            break;
+        } else if block_bytes_read != BLOCK_SIZE {
+            return Err(format!(
+                "invalid ciphertext length, the last block was {} long, expected 16 (block size)",
+                block_bytes_read
+            ));
+        }
 
-        previous_block = current_block;
+        ciphertext_block = buf.into();
+        output_block = decrypt_block(ciphertext_block, config);
+        plaintext_block = output_block ^ previous_block;
+        write_queue.push_front(plaintext_block);
+
+        previous_block = ciphertext_block;
+        // Delay writing by one iteration so the padding can be removed from the last block before writing
+        if write_queue.len() < 2 {
+            continue;
+        }
+
+        total_bytes_written += write_data(
+            plaintext,
+            &write_queue
+                .pop_back()
+                .ok_or("couldn't fetch a block from the write queue".to_string())?
+                .bytes(),
+            BLOCK_SIZE,
+        )?;
     }
 
-    remove_padding(cleartext)
+    let last_block = write_queue
+        .pop_back()
+        .ok_or("couldn't fetch a block from the write queue".to_string())?;
+    let unpadded = unpad_block(last_block)?;
+    total_bytes_written += write_data(plaintext, &unpadded, unpadded.len())?;
+
+    Ok(total_bytes_written)
 }
 
 fn ensure_cbc_mode(config: &AESConfig) -> Result<Block, String> {
     match config.mode {
-        OperationMode::CBC { iv } => Ok(iv),
+        OperationMode::CBC { iv } => Ok(iv.into()),
         _ => Err(format!(
             "Invalid operation mode, expected CBC, got {:?}",
             config.mode

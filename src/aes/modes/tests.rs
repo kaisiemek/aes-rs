@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod test {
     use crate::aes::{
-        config::AESConfig,
-        datastructures::block::Block,
+        config::{AESConfig, CFBSegmentSize, OperationMode},
+        constants::BLOCK_SIZE,
         key::Key,
-        modes::{cbc, cfb, ctr, ecb, ofb, CFBSegmentSize, OperationMode},
+        modes::{cbc, cfb, ctr, ecb, ofb},
     };
 
     #[test]
@@ -59,13 +59,16 @@ mod test {
         let plaintext = get_nist_test_plaintext();
         let config = AESConfig::new(key, OperationMode::ECB);
 
-        let ciphertext = ecb::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        ecb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
 
         let mut ciphertext_no_padding = ciphertext.clone();
         ciphertext_no_padding.truncate(ciphertext_no_padding.len() - 16);
         assert_eq!(ciphertext_no_padding, expected);
 
-        let decrypted = ecb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        ecb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
+
         assert_eq!(decrypted, plaintext);
     }
 
@@ -122,13 +125,15 @@ mod test {
         let iv = get_nist_test_iv();
         let config = AESConfig::new(key, OperationMode::CBC { iv });
 
-        let ciphertext = cbc::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        cbc::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
 
         let mut ciphertext_no_padding = ciphertext.clone();
         ciphertext_no_padding.truncate(ciphertext_no_padding.len() - 16);
         assert_eq!(ciphertext_no_padding, expected);
 
-        let decrypted = cbc::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        cbc::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -188,10 +193,12 @@ mod test {
         let iv = get_nist_test_iv();
         let config = AESConfig::new(key, OperationMode::OFB { iv });
 
-        let ciphertext = ofb::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        ofb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = ofb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        ofb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -203,13 +210,14 @@ mod test {
         expected.pop();
 
         let iv = get_nist_test_iv();
-
         let config = AESConfig::new(key, OperationMode::OFB { iv });
 
-        let ciphertext = ofb::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        ofb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = ofb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        ofb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -275,10 +283,12 @@ mod test {
             },
         );
 
-        let ciphertext = cfb::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        cfb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = cfb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        cfb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -298,10 +308,14 @@ mod test {
             },
         );
 
-        let ciphertext = cfb::encrypt(plaintext.as_slice(), &config).unwrap();
+        println!("{}", plaintext.as_slice().len());
+
+        let mut ciphertext = Vec::new();
+        cfb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = cfb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        cfb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -348,10 +362,12 @@ mod test {
             },
         );
 
-        let ciphertext = cfb::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        cfb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = cfb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        cfb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -369,10 +385,12 @@ mod test {
             },
         );
 
-        let ciphertext = cfb::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        cfb::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = cfb::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        cfb::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -432,10 +450,12 @@ mod test {
         let iv = get_nist_initial_counter();
         let config = AESConfig::new(key, OperationMode::CTR { iv });
 
-        let ciphertext = ctr::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        ctr::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = ctr::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        ctr::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -445,14 +465,15 @@ mod test {
         plaintext.pop();
         expected.pop();
         expected.pop();
-
         let iv = get_nist_initial_counter();
         let config = AESConfig::new(key, OperationMode::CTR { iv });
 
-        let ciphertext = ctr::encrypt(plaintext.as_slice(), &config).unwrap();
+        let mut ciphertext = Vec::new();
+        ctr::encrypt(&mut plaintext.as_slice(), &mut ciphertext, &config).unwrap();
         assert_eq!(ciphertext, expected);
 
-        let decrypted = ctr::decrypt(ciphertext.as_slice(), &config).unwrap();
+        let mut decrypted = Vec::new();
+        ctr::decrypt(&mut ciphertext.as_slice(), &mut decrypted, &config).unwrap();
         assert_eq!(decrypted, plaintext);
     }
 
@@ -468,13 +489,13 @@ mod test {
         )
     }
 
-    fn get_nist_test_iv() -> Block {
+    fn get_nist_test_iv() -> [u8; BLOCK_SIZE] {
         string_to_vec(concat!("00010203 04050607 08090A0B 0C0D0E0F").to_string())
             .try_into()
             .unwrap()
     }
 
-    fn get_nist_initial_counter() -> Block {
+    fn get_nist_initial_counter() -> [u8; BLOCK_SIZE] {
         string_to_vec("F0F1F2F3 F4F5F6F7 F8F9FAFB FCFDFEFF".to_string())
             .try_into()
             .unwrap()

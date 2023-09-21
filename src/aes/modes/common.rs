@@ -15,38 +15,38 @@ pub fn decrypt_block(block: Block, config: &AESConfig) -> Block {
     run_block_operations(colmat, &config.dec_schedule, &config.key).block()
 }
 
-pub fn get_next_block(data: &[u8]) -> (Block, bool) {
-    let padded = data.len() < BLOCK_SIZE;
-
-    if !padded {
-        return (data.try_into().unwrap(), padded);
-    }
-
-    let mut data = data.to_vec();
-    data.push(PADDING_MARKER);
-    data.resize(BLOCK_SIZE, PADDING_BYTE);
-
-    (data.try_into().unwrap(), padded)
+pub fn read_data(src: &mut impl std::io::Read, buf: &mut [u8]) -> Result<usize, String> {
+    src.read(buf).map_err(|err| err.to_string())
 }
 
-pub fn remove_padding(mut data: Vec<u8>) -> Result<Vec<u8>, String> {
-    while !data.is_empty() {
-        match data.pop() {
-            Some(PADDING_BYTE) => continue,
-            Some(PADDING_MARKER) => return Ok(data),
-            Some(_) => {
-                return Err(
-                    "invalid padding, encountered non-padding byte before padding marker"
-                        .to_string(),
-                )
-            }
-            None => {
-                return Err("invalid padding, ran out of data before padding marker".to_string())
-            }
+pub fn write_data(
+    dst: &mut impl std::io::Write,
+    buf: &[u8],
+    bytes: usize,
+) -> Result<usize, String> {
+    dst.write(&buf[0..bytes]).map_err(|err| err.to_string())
+}
+
+pub fn pad_buffer(mut buf: [u8; BLOCK_SIZE], start_index: usize) -> Block {
+    buf[start_index..].fill(PADDING_BYTE);
+    buf[start_index] = PADDING_MARKER;
+    buf.into()
+}
+
+pub fn unpad_block(block: Block) -> Result<Vec<u8>, String> {
+    let mut block = block.bytes().to_vec();
+    for (rev_index, byte) in block.iter().rev().enumerate() {
+        if *byte == PADDING_BYTE {
+            continue;
+        } else if *byte == PADDING_MARKER {
+            block.truncate(block.len() - rev_index - 1);
+            break;
+        } else {
+            return Err(format!("Invalid padding byte: {:#04x}", byte));
         }
     }
 
-    unreachable!()
+    Ok(block)
 }
 
 fn run_block_operations(
