@@ -1,7 +1,7 @@
 use crate::aes::constants::{
     AES_IRREDUCIBLE_POLY, ENCRYPTION_ROUNDS_AES128, GF256_MULT_02_LOOKUP_TABLE,
     GF256_MULT_03_LOOKUP_TABLE, GF256_MULT_09_LOOKUP_TABLE, GF256_MULT_11_LOOKUP_TABLE,
-    GF256_MULT_13_LOOKUP_TABLE, GF256_MULT_14_LOOKUP_TABLE,
+    GF256_MULT_13_LOOKUP_TABLE, GF256_MULT_14_LOOKUP_TABLE, GHASH_IRREDUCIBLE_POLY,
 };
 
 pub fn add(a: u8, b: u8) -> u8 {
@@ -25,6 +25,33 @@ pub fn mul(a: u8, b: u8) -> u8 {
             gf256_mult(a, b)
         }
     }
+}
+
+// as described in NIST Special Publication 800-38D, Section 6.3
+pub fn ghash_mul(x: u128, mut y: u128) -> u128 {
+    let mut out: u128 = 0;
+    let mut bit_mask: u128 = 1 << 127;
+    let lsb_mask: u128 = 1;
+
+    while bit_mask > 0 {
+        // if the i-th bit of x is 1, XOR the out polynomial with the current y
+        if (x & bit_mask) > 0 {
+            out ^= y;
+        }
+
+        let lsb_set = (y & lsb_mask) > 0;
+
+        y >>= 1;
+
+        // in each round divide the y polynomial by the irreducible polynomial if the LSB is 1
+        if lsb_set {
+            y ^= GHASH_IRREDUCIBLE_POLY;
+        }
+
+        bit_mask >>= 1;
+    }
+
+    out
 }
 
 pub const fn calc_lookup_table(a: u8) -> [u8; 256] {

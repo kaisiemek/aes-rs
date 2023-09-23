@@ -11,6 +11,7 @@ This is an **educational** project that aims to implement the NIST Advanced Encr
 - **Cipher Feedback (CFB)** mode, implements a stream cipher using Rijndael to create the encryption stream bytes. Uses the previous ciphertext block to create the input block for the Rinjdael block encryption operation. Additionally, a segment size can be chosen to modify how many bits of plaintext are processed at a time. Currently supported: 8-bit and 128-bit variants.
 - **Output Feedback (OFB)** mode. Implements a stream cipher similar to CFB. The output of the previous blocks Rijndael block encryption operation is used as the input for the next block encryption operation. XOR'ing the output with the plaintext block results in the corresponding ciphertext block.
 - **Counter (CTR)** mode. Is also used to implement a stream cipher. A unique counter is chosen for each block and used as input for the block encryption operation. The output is XOR'd with the plaintext block to obtain the ciphertext block.
+- **Galois Counter Mode (GCM)**, works cimilar to CTR mode but calculates a hashed value over the ciphertext + some additional authenticated data AAD. The decryption fails if the ciphertext has been tampered with.
 
 ## Encryption Mode Architecture
 
@@ -34,6 +35,5 @@ For each block there are a few variables that have the same meaning across all m
 ## TODO
 
 - CFB: more chunk sizes (multiples of 8), (CFB-1?)
-- GCM (and CCM?) mode
 - (XTR mode?)
 - (Key generation?)

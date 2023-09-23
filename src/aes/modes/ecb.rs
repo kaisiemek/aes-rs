@@ -27,13 +27,13 @@ pub fn encrypt(
         }
 
         plaintext_block = buf.into();
-        ciphertext_block = encrypt_block(plaintext_block, config);
+        ciphertext_block = encrypt_block(plaintext_block, &config.key);
 
         total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), BLOCK_SIZE)?;
     }
 
     plaintext_block = pad_buffer(buf, block_bytes_read);
-    ciphertext_block = encrypt_block(plaintext_block, config);
+    ciphertext_block = encrypt_block(plaintext_block, &config.key);
     total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), BLOCK_SIZE)?;
 
     Ok(total_bytes_written)
@@ -67,7 +67,7 @@ pub fn decrypt(
             ));
         }
         ciphertext_block = buf.into();
-        plaintext_block = decrypt_block(ciphertext_block, config);
+        plaintext_block = decrypt_block(ciphertext_block, &config.key);
         write_queue.push_front(plaintext_block);
 
         // Delay writing by one iteration so the padding can be removed from the last block before writing

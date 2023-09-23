@@ -1,4 +1,7 @@
-use crate::aes::{constants::BLOCK_SIZE, datastructures::word::Word};
+use crate::aes::{
+    constants::BLOCK_SIZE,
+    datastructures::{gf_math::ghash_mul, word::Word},
+};
 use std::{array::TryFromSliceError, fmt::Display};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +91,22 @@ impl std::ops::AddAssign for Block {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, rhs: Self) {
         *self ^= rhs;
+    }
+}
+
+impl std::ops::Mul for Block {
+    type Output = Block;
+
+    // GHASH Multiplication in GF(2^128)
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self *= rhs;
+        self
+    }
+}
+
+impl std::ops::MulAssign for Block {
+    fn mul_assign(&mut self, rhs: Self) {
+        self.0 = ghash_mul(self.0, rhs.0);
     }
 }
 

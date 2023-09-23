@@ -90,8 +90,9 @@ pub const INV_MIX_COL_MATRIX: [Word; 4] = [
 ];
 
 // ===========================================================================
-//                        GF(2^8) arithmetic constants
+//                        GF arithmetic constants
 // ===========================================================================
+pub const GHASH_IRREDUCIBLE_POLY: u128 = 0b1110_0001 << 120;
 pub const AES_IRREDUCIBLE_POLY: u8 = 0x1b;
 // calculate lookup tables for the values 2, 3, 9, 11, 13 and 15
 // (these are the values used in the MixColumn and InverseMixColumn matrices)

@@ -30,7 +30,7 @@ pub fn encrypt(
 
         plaintext_block = buf.into();
         input_block = previous_block;
-        output_block = encrypt_block(input_block, config);
+        output_block = encrypt_block(input_block, &config.key);
         ciphertext_block = plaintext_block ^ output_block;
         previous_block = output_block;
 

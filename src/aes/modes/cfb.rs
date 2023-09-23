@@ -27,7 +27,7 @@ pub fn encrypt(
         }
 
         input_block = previous_block;
-        output_block = encrypt_block(input_block, config);
+        output_block = encrypt_block(input_block, &config.key);
 
         // ciphertext block = cleartext XOR encrypted block, may be partial
         buf ^= output_block;
@@ -72,7 +72,7 @@ pub fn decrypt(
         }
 
         input_block = previous_block;
-        output_block = encrypt_block(input_block, config);
+        output_block = encrypt_block(input_block, &config.key);
         plaintext_block = output_block ^ buf.as_slice();
 
         total_bytes_written += write_data(plaintext, &plaintext_block.bytes(), block_bytes_read)?;

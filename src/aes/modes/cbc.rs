@@ -30,7 +30,7 @@ pub fn encrypt(
 
         plaintext_block = buf.into();
         input_block = plaintext_block ^ previous_block;
-        ciphertext_block = encrypt_block(input_block, config);
+        ciphertext_block = encrypt_block(input_block, &config.key);
         previous_block = ciphertext_block;
 
         total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), block_bytes_read)?;
@@ -38,7 +38,7 @@ pub fn encrypt(
 
     plaintext_block = pad_buffer(buf, block_bytes_read);
     input_block = plaintext_block ^ previous_block;
-    ciphertext_block = encrypt_block(input_block, config);
+    ciphertext_block = encrypt_block(input_block, &config.key);
     total_bytes_written += write_data(ciphertext, &ciphertext_block.bytes(), BLOCK_SIZE)?;
 
     Ok(total_bytes_written)
@@ -74,7 +74,7 @@ pub fn decrypt(
         }
 
         ciphertext_block = buf.into();
-        output_block = decrypt_block(ciphertext_block, config);
+        output_block = decrypt_block(ciphertext_block, &config.key);
         plaintext_block = output_block ^ previous_block;
         write_queue.push_front(plaintext_block);
 

@@ -6,7 +6,9 @@ mod modes;
 
 use self::{
     config::{AESConfig, OperationMode},
-    modes::{cbc, cfb, ctr, ecb, ofb},
+    datastructures::block::Block,
+    key::Key,
+    modes::{cbc, cfb, ctr, ecb, gcm, ofb},
 };
 use std::{
     fs::File,
@@ -85,4 +87,27 @@ pub fn decrypt_vec(input: &Vec<u8>, config: &AESConfig) -> Result<Vec<u8>, Strin
     let mut output = Vec::with_capacity(input.len());
     decrypt(&mut input.as_slice(), &mut output, config)?;
     Ok(output)
+}
+
+#[allow(dead_code)]
+pub fn authenticated_encrypt_gcm(
+    plaintext: &mut impl std::io::Read,
+    ciphertext: &mut impl std::io::Write,
+    key: &Key,
+    iv: &[u8],
+    aad: &[u8],
+) -> Result<(usize, Block), String> {
+    gcm::authenticated_encrypt(plaintext, ciphertext, key, iv, aad)
+}
+
+#[allow(dead_code)]
+pub fn authenticated_decrypt_gcm(
+    ciphertext: &mut impl std::io::Read,
+    plaintext: &mut impl std::io::Write,
+    key: &Key,
+    iv: &[u8],
+    aad: &[u8],
+    auth_tag: Block,
+) -> Result<usize, String> {
+    gcm::authenticated_decrypt(ciphertext, plaintext, key, iv, aad, auth_tag)
 }
